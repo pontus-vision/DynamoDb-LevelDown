@@ -1,18 +1,17 @@
 'use strict'
-const url = require('url')
-const test = require('tape')
-const dynalite = require('dynalite')
-const levelup = require('levelup')
-const abstractTestCommon = require('abstract-leveldown/testCommon')
-
-const DynamoDBDOWN = require('../index')
-
-const dynamodbOptions = {
-  region: 'us-east-1',
-  accessKeyId: 'abc',
-  secretAccessKey: '123',
-  paramValidation: false
-}
+const url                = require('url'),
+      test               = require('tape'),
+      dynalite           = require('dynalite'),
+      levelup            = require('levelup'),
+      abstractTestCommon = require('abstract-leveldown/testCommon'),
+      { DynamoDB }       = require('aws-sdk'),
+      DynamoDBDOWN       = require('../index'),
+      dynamodbOptions    = {
+        region: 'us-east-1',
+        accessKeyId: 'abc',
+        secretAccessKey: '123',
+        paramValidation: false
+      };
 
 const startDbServer = (cb) => {
   const server = dynalite({
@@ -22,9 +21,7 @@ const startDbServer = (cb) => {
   })
 
   server.listen((err) => {
-    if (err) {
-      throw err
-    }
+    if (err) throw err;
 
     const address = server.address()
 
@@ -58,7 +55,9 @@ const createTestCommon = () => {
 }
 
 const leveldown = location => {
-  const dynamoDown = new DynamoDBDOWN(location)
+
+  const dynamo     = new DynamoDB(dynamodbOptions),
+        dynamoDown = DynamoDBDOWN(dynamo)(location);
 
   dynamoDown.oldOpen = dynamoDown._open
   dynamoDown._open = function (opts, cb) {
@@ -133,13 +132,14 @@ test('abstract-leveldown', t => {
 })
 
 test('levelup', t => {
-  var server
-  var db
+  var server;
+  var db;
 
   t.test('setup', t => {
     startDbServer(newServer => {
       server = newServer
-      db = levelup('foobase', {db: DynamoDBDOWN, dynamodb: dynamodbOptions})
+      const dynamo = new DynamoDB(dynamodbOptions);
+      db = levelup('foobase', {db: DynamoDBDOWN(dynamo)});
       t.end()
     })
   })
@@ -156,11 +156,10 @@ test('levelup', t => {
   })
 
   t.test('put binary', t => {
-    const buffer = new Buffer('testbuffer')
-
+    const buffer = new Buffer('testbuffer');
     db.put('binary', buffer, function (err) {
       t.notOk(err)
-      db.get('binary', function (err, value) {
+      db.get('binary', { encoding: 'binary' }, function (err, value) {
         t.notOk(err)
         t.deepEqual(value, buffer)
         t.end()

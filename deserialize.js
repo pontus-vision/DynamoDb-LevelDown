@@ -8,11 +8,10 @@ module.exports = function deserialize (val, asBuffer) {
       return acc
     }, {})
   }
-
   switch (type) {
-    case 'NULL' : return asBuffer === false ? null : new Buffer(0)
-    case 'S' : return asBuffer === false ? value : new Buffer(value)
-    case 'B' : return value
+    case 'NULL' : return null;
+    case 'S' : return Buffer.from(value).toString()
+    case 'B': return Buffer.from(value)
     case 'BOOL' : return value
     case 'N' : return parseFloat(value, 10)
     case 'L' : return value.map(deserialize, asBuffer)
