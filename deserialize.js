@@ -1,6 +1,6 @@
 module.exports = function deserialize (val, asBuffer) {
-  const type = Object.keys(val)[0]
-  const value = val[type]
+  const type = Object.keys(val || {})[0] || 'NULL';
+  const value = (val || {})[type];
 
   const reduce = function (value) {
     return Object.keys(value).reduce((acc, key) => {

@@ -9,7 +9,8 @@ const { AbstractLevelDOWN }   = require('abstract-leveldown'),
         DynamoDBIterator      = require('./iterator'),
       { isPlainObject,
         isBuffer,
-        castToBuffer }        = require('./lib/utils');
+        castToBuffer }        = require('./lib/utils'),
+      { promisify }           = require('es6-promisify');
 
 function hexEncodeTableName (str) {
   var hex = '';
@@ -20,21 +21,27 @@ function hexEncodeTableName (str) {
 }
 
 class DynamoDBDOWN extends AbstractLevelDOWN {
-  constructor(dynamodb, location){
+  constructor(dependencies = {}, location){
     super(location);
     const tableHash = location.split('$');
 
     this.tableName = tableHash[0];
     this.hashKey   = tableHash[1] || '!';
 
-    this.dynamoDb = dynamodb;
-  
+    // this.dynamoDb = dynamodb;
+    
+    Object.entries(dependencies).forEach(([name, dependency]) => this[name] = dependency );
+    
     globalStore[location] = this;
+
+    if(this.s3) this.s3.createBucket({ Bucket: this.tableName }, () => {});
+
   }
 
   _open(options={}, cb) {
     // if (!options.dynamodb) return cb(new Error('`open` requires `options` argument with "dynamodb" key'));
     options.dynamodb = options.dynamodb || {};
+    options.s3       = options.s3       || {};
     if (typeof options.prefix === 'string') this.tableName = this.tableName.replace(options.prefix, '');
   
     if (options.dynamodb.hexEncodeTableName === true) {
@@ -58,24 +65,65 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         cb(null, this)
       }
     });
+
+    // this._openS3({ Bucket: this.tableName }, cb);
+    try {
+    } catch(err) {
+      
+    }
+    
   }
+
   
   _put(key, value, options, cb) {
+    if(typeof key === 'string' && key.match('foobatch1')) debugger;
     const params = {
       TableName: this.encodedTableName,
       Item: {
         hkey: {S: this.hashKey},
         rkey: {S: key.toString()},
-        value: serialize(value)
       }
-    }
-    if(isPlainObject(value)) {
+    };
+    const shouldSpread = isPlainObject(value);
+    if(shouldSpread) {
       const serialized = serialize(value).M;
       params.Item = Object.assign(serialized, params.Item);
-      delete params.item.value;
     }
-    this.dynamoDb.putItem(params, cb);
+    this.dynamoDb.putItem(params, (err, data) => {
+      if(err) return cb(err);
+      if(shouldSpread) return cb(null, data);
+      this.s3.putObject({
+        Body: JSON.stringify(serialize(value)),
+        Bucket: this.tableName,
+        Key: `${this.hashKey}${key.toString()}`
+      }, cb);
+    });
   }
+
+  // _putS3(key, value, options, cb){
+  //   const serialized = JSON.stringify(serialize(value));
+  //   const params = {
+  //     Body: serialized,
+  //     Bucket: this.tableName, 
+  //     Key: key
+  //   }
+  //   this.s3.putObject(params, cb);
+  // }
+
+  // _getS3(key, options, cb){
+  //   const params = {
+  //     Body: value.toString(),
+  //     Bucket: this.tableName, 
+  //     Key: key
+  //   }
+  //   this.s3.getObject(params, function(err, data) {
+  //     if(err) return cb(err);
+  //     if(!(data && data.Body)) return cb(new Error('NotFound'));
+  //     const body = Buffer.from(data.Body).toString();
+  //     const deserialized = deserialize(JSON.parse(body));
+  //     cb(null, deserialized);
+  //   });
+  // }
   
   _get(key, options, cb) {
     const params = {
@@ -85,21 +133,45 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         rkey: {S: key.toString()}
       }
     };
-    this.dynamoDb.getItem(params, function (err, data) {
+    this.dynamoDb.getItem(params, (err, data) => {
       if(err) return cb(err);
-      if(!(data && data.Item)) return cb(new Error('NotFound'));
-      let value = isPlainObject(data.Item.value) ? data.Item.value : { M: data.Item };
-      if(value === undefined) return cb(new Error('NotFound'));
-      let deserialized = deserialize(value);
-      if(isBuffer(deserialized)) deserialized = Buffer.from(deserialized);
-      if(isPlainObject(deserialized)) deserialized = JSON.stringify(deserialized);
-      deserialized = (options.asBuffer) ? castToBuffer(deserialized) : deserialized;
-      // if(deserialized && deserialized.toString && deserialized.toString().match(/testbuffer/)) {
-      //   deserialized.toString = function(){ return deserialized; };
-      //   // return cb(null, { toString(){ return deserialized; } } );
-      // };
-      cb(null, deserialized);
+      // if(!(data && data.Item)) return cb(new Error('NotFound'));
+      if(!data || !data.Item) return cb(new Error('NotFound'));
+      if(Object.keys(data.Item || {}).length > 2){
+        const deserialized = deserialize({ M: data.Item });
+        cb(null, JSON.stringify(deserialized));
+      } else {
+        const params = {
+          Bucket: this.tableName, 
+          Key: `${this.hashKey}${key.toString()}`
+        };
+        this.s3.getObject(params, function(err, data) {
+          // if(err) return cb(err);
+          if(!(data && data.Body)) return cb(null, Buffer.alloc(0));
+          const body = Buffer.from(data.Body).toString();
+          let deserialized = deserialize(JSON.parse(body));
+          if(isBuffer(deserialized)) deserialized = Buffer.from(deserialized);
+          if(isPlainObject(deserialized)) deserialized = JSON.stringify(deserialized);
+          deserialized = (options.asBuffer) ? castToBuffer(deserialized) : deserialized;
+          try {
+            cb(null, deserialized);
+          } catch(err) {
+
+          }
+        });
+      }
     });
+    // this.dynamoDb.getItem(params, function (err, data) {
+    //   if(err) return cb(err);
+    //   if(!(data && data.Item)) return cb(new Error('NotFound'));
+    //   let value = isPlainObject(data.Item.value) ? data.Item.value : { M: data.Item };
+    //   if(value === undefined) return cb(new Error('NotFound'));
+    //   let deserialized = deserialize(value);
+    //   if(isBuffer(deserialized)) deserialized = Buffer.from(deserialized);
+    //   if(isPlainObject(deserialized)) deserialized = JSON.stringify(deserialized);
+    //   deserialized = (options.asBuffer) ? castToBuffer(deserialized) : deserialized;
+    //   cb(null, deserialized);
+    // });
   }
   
   _del(key, options, cb) {
@@ -110,10 +182,16 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         rkey: {S: key.toString()}
       }
     };
-    this.dynamoDb.deleteItem(params, cb);
+    this.dynamoDb.deleteItem(params, (err) => {
+      if(err) return cb(err);
+      this.s3.deleteObject({
+        Bucket: this.tableName,
+        Key: `${this.hashKey}${key.toString()}`
+      }, () => cb());
+    });
   }
   
-  _batch(array, options, cb) {
+  async _batch(array, options, cb) {
     const opKeys = {},
           ops    = [];
   
@@ -151,7 +229,6 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
 
         }
         if(isPlainObject(value)) {
-        // if(false){ // REENABLE
           const serialized = serialize(value, options.asBuffer).M,
                 Item       = Object.assign(serialized, {
                   hkey: {S: this.hashKey},
@@ -167,8 +244,9 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
             PutRequest: {
               Item: {
                 hkey: {S: this.hashKey},
-                        rkey: {S: item.key.toString()},
-                value: serialize(item.value)
+                rkey: {S: item.key.toString()},
+                '---s3-key': `${this.hashKey}${item.key.toString()}`,
+                '---s3-body': serialize(item.value)
               }
             }
           };
@@ -177,6 +255,38 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
   
       ops.push(op);
     })
+
+    const putObject = promisify(this.s3.putObject).bind(this.s3);
+
+    let i = 0;
+
+    while(i < ops.length){
+      const req   = ops[i] || {},
+            item  = (req.PutRequest || req.DeleteRequest || {}).Item || {},
+            key   = item['---s3-key'],
+            body  = item['---s3-body'];
+      i++;
+      delete item['---s3-body'];
+      delete item['---s3-key'];
+      if(!key) continue;
+      if(req.PutRequest && body){
+        try {
+          await putObject({
+            Body: JSON.stringify(body),
+            Bucket: this.tableName,
+            Key: key
+          });
+        } catch(err){
+
+        }
+
+        // this.s3.putObject({
+        //   Body: JSON.stringify(body),
+        //   Bucket: this.tableName,
+        //   Key: key
+        // }, () => {});
+      }
+    }
   
     const params = {RequestItems: {}};
   
@@ -220,7 +330,6 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
       ReadCapacityUnits: 1,
       WriteCapacityUnits: 1
     };
-  
     this.dynamoDb.createTable(params, (err, data) => {
       if(err) return cb(err);
       this.dynamoDb.waitFor(
@@ -232,9 +341,9 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
   
 }
 
-module.exports = function(dynamo){
+module.exports = function(dependencies){
   const func = function(location){
-    return new DynamoDBDOWN(dynamo, location);
+    return new DynamoDBDOWN(dependencies, location);
   };
   
   func.destroy = function (name, cb) {

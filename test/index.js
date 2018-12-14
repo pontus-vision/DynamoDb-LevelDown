@@ -5,6 +5,7 @@ const url                = require('url'),
       levelup            = require('levelup'),
       abstractTestCommon = require('abstract-leveldown/testCommon'),
       { DynamoDB }       = require('aws-sdk'),
+      { S3 }             = require('mock-s3'),
       DynamoDBDOWN       = require('../index'),
       dynamodbOptions    = {
         region: 'us-east-1',
@@ -56,12 +57,17 @@ const createTestCommon = () => {
 
 const leveldown = location => {
 
-  const dynamo     = new DynamoDB(dynamodbOptions),
-        dynamoDown = DynamoDBDOWN(dynamo)(location);
+  const dynamoDb   = new DynamoDB(dynamodbOptions),
+        s3         = new S3(),
+        dynamoDown = DynamoDBDOWN({
+          dynamoDb,
+          s3
+        })(location);
 
-  dynamoDown.oldOpen = dynamoDown._open
+  dynamoDown.oldOpen = dynamoDown._open;
   dynamoDown._open = function (opts, cb) {
-    return dynamoDown.oldOpen(Object.assign({dynamodb: dynamodbOptions}, {createIfMissing: true}), cb)
+    // return dynamoDown.oldOpen.bind(dynamoDown)({}, { createIfMissing: true }, cb);
+    return dynamoDown.oldOpen.bind(dynamoDown)(Object.assign({dynamodb: dynamodbOptions}, {createIfMissing: true}), cb)
   }
 
   return dynamoDown
@@ -138,8 +144,13 @@ test('levelup', t => {
   t.test('setup', t => {
     startDbServer(newServer => {
       server = newServer
-      const dynamo = new DynamoDB(dynamodbOptions);
-      db = levelup('foobase', {db: DynamoDBDOWN(dynamo)});
+      const dynamoDb   = new DynamoDB(dynamodbOptions),
+            s3         = new S3(),
+            dynamoDown = DynamoDBDOWN({
+              dynamoDb,
+              s3
+            });
+      db = levelup('foobase', { db: dynamoDown });
       t.end()
     })
   })
