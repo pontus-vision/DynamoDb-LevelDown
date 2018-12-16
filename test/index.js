@@ -123,7 +123,12 @@ test('abstract-leveldown', t => {
   })
 
   t.test('abstract-leveldown/abstract/iterator-test', t => {
-    require('abstract-leveldown/abstract/iterator-test').all(leveldown, t.test, testCommon)
+    require('abstract-leveldown/abstract/iterator-test').setUp(leveldown, t.test, testCommon);
+    require('abstract-leveldown/abstract/iterator-test').args(t.test);
+    require('abstract-leveldown/abstract/iterator-test').sequence(t.test);
+    require('abstract-leveldown/abstract/iterator-test').iterator(leveldown, t.test, testCommon, testCommon.collectEntries);
+    // require('abstract-leveldown/abstract/iterator-test').snapshot(leveldown, t.test, testCommon);
+    require('abstract-leveldown/abstract/iterator-test').tearDown(t.test, testCommon);
   })
 
   t.test('abstract-leveldown/abstract/ranges-test', t => {

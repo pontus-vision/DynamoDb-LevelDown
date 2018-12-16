@@ -1,13 +1,13 @@
 {
-  "name": "dynamodbdown",
-  "description": "A LevelDOWN API implementation on Amazon DynamoDB",
+  "name": "awsdown",
+  "description": "A LevelDOWN API implementation on Amazon DynamoDB and Amazon S3.",
   "main": "index.js",
   "scripts": {
     "lint": "standard",
     "test": "tape test | tap-spec",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
-  "author": "Klaus Trainer <klaus_trainer@apache.org>",
+  "author": "Ben Titcomb <tenbitcomb@gmail.com>",
   "license": "Apache-2.0",
   "keywords": [
     "aws",
@@ -15,6 +15,7 @@
     "db",
     "dynamo",
     "dynamodb",
+    "s3",
     "storage",
     "store",
     "level",
@@ -24,6 +25,9 @@
   ],
   "dependencies": {
     "abstract-leveldown": "^2.6.1",
+    "blob-to-buffer": "^1.2.8",
+    "bluebird": "^3.5.3",
+    "buffer": "^5.2.1",
     "es6-promisify": "^6.0.1",
     "through2": "^2.0.1"
   },

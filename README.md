@@ -1,14 +1,20 @@
-# DynamoDBDOWN #
+AWSDOWN
+=======
 
 [![Build Status](https://travis-ci.org/KlausTrainer/dynamodbdown.svg?branch=main)](https://travis-ci.org/KlausTrainer/dynamodbdown)
-[![JavaScript Style Guide](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](http://standardjs.com/)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
-A [LevelDOWN](https://github.com/level/leveldown) API implementation on [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
+A [LevelDOWN](https://github.com/level/leveldown) API implementation on [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) and [Amazon S3](https://aws.amazon.com/s3/).
 
-This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for storage. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
+This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for object storage and [Amazon S3](https://aws.amazon.com/s3/) for primitive value storage. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
 
 As of version 0.7, LevelUP allows you to pass a `db` option when you create a new instance. This will override the default LevelDOWN store with a LevelDOWN API compatible object. DynamoDBDOWN conforms exactly to the LevelDOWN API, but performs operations against a DynamoDB database.
+
+## Why?
+
+This LevelDOWN implementation is different from others such as [DynamoDBDOWN](https://github.com/KlausTrainer/dynamodbdown) in that objects are cast to actual column types in DynamoDB, and primitive values(e.g. string, number, boolean, buffer/blob) are stored in S3; this allows objects to be natively queryable with DynamoDB, and S3 allows us to store data beyond the 400kb maximum record size that DynamoDB imposes.
+
+The intended use case for this library is with PouchDB, where most database activity involves saving objects(i.e. documents) while a few things such as attachments and database info are better suited for a storage engine like S3.  Compatibility with PouchDB is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as *full replication*, including attachments of any size.  Using this LevelDOWN implementation wtih PouchDB can be useful for regular backups as well as migrating data to CouchDB.
 
 ## Usage Example ##
 
@@ -74,18 +80,19 @@ const db = levelup('tableName$hashKey', options)
 db.put('some key', 'some value', => err {
   // the DynamoDB object would now look like this:
   // {
-  //   hkey: 'hashKey',
-  //   rkey: 'some key',
-  //   value: 'some value'
+  //   '---hkey': 'hashKey',
+  //   '---rkey': 'some key',
   // }
-})
+});
 ```
 
 If you are fine with sharing capacity units across multiple database instances or applications, you can reuse a table by specifying the same table name, but different hash keys.
 
-## Table Creation ##
+## Table & Bucket Creation ##
 
-If the table doesn't exist, DynamoDBDOWN will try to create a table. You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
+If the table doesn't exist, DynamoDBDOWN will try to create a table.  You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
+
+DynamoDBDOWN will also attempt to create an S3 bucket if it doesn't already exist.
 
 See [LevelUP options](https://github.com/level/levelup#options) for more information.
 
