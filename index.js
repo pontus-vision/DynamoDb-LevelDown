@@ -51,7 +51,7 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
     try {
       if(this.s3) await promisify(this.s3.createBucket).apply(this.s3, [{ Bucket: this.s3Bucket }]);
     } catch(err) {
-      const exists = (err.message || '').match('Your previous request to create the named bucket succeeded and you already own it');
+      const exists = (err.message || '').match(/you already own it|bucket already exist/i);
       if(!exists) return cb(err);
     }
 
@@ -81,7 +81,6 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         }
       };
       const shouldSpread = isPlainObject(value);
-      debugger
       if(shouldSpread) params.Item = Object.assign(await serialize(value).M, params.Item);
       const itemData = await promisify(this.dynamoDb.putItem).apply(this.dynamoDb, [params]);
       if(shouldSpread) return cb(null, itemData);
