@@ -181,7 +181,21 @@ test('levelup', t => {
         t.end()
       })
     })
-  })
+  });
+
+  // t.test('put object', t => {
+  //   const object = {
+  //     a: 'b'
+  //   };
+  //   db.put('object', object, { valueEncoding: 'json' }, function (err) {
+  //     t.notOk(err)
+  //     db.get('object', function (err, value) {
+  //       t.notOk(err)
+  //       t.deepEqual(value, buffer)
+  //       t.end()
+  //     })
+  //   })
+  // });
 
   t.test('tearDown', t => {
     server.close(() => {

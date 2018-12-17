@@ -46,8 +46,8 @@ class DynamoDBIterator extends AbstractIterator {
       obj.value = isPlainObject(obj.value) ? JSON.stringify(obj.value) : obj.value.toString();
     if (this.keyAsBuffer === false) obj.key = obj.key.toString();
     // FIXME: This could be better.
-    const key   = this.keyAsBuffer   ? castToBuffer(obj.key)   : obj.key,
-          value = this.valueAsBuffer ? castToBuffer(obj.value) : obj.value;
+    const key   = this.keyAsBuffer   ? await castToBuffer(obj.key)   : obj.key,
+          value = this.valueAsBuffer ? await castToBuffer(obj.value) : obj.value;
     cb(null, key, value);
   }
   
@@ -60,10 +60,10 @@ class DynamoDBIterator extends AbstractIterator {
       return opts.limit && returnCount > opts.limit;
     }
   
-    const stream = through2.obj(function (data, enc, cb) {
+    const stream = through2.obj(async function (data, enc, cb) {
 
       const output = {
-        key: deserialize(data['---rkey']),
+        key: await deserialize(data['---rkey']),
         value: data.value
       };
 
@@ -156,10 +156,10 @@ class DynamoDBIterator extends AbstractIterator {
       if(!records || !records.Items) throw new Error('Items not found');
       await Promise.all(records.Items.map(async item => {
         if(Object.keys(item) > 2) {
-          item.value = deserialize(Object.assign({}, item));
+          item.value = await deserialize(Object.assign({}, item));
           return;
         };
-        const dItem  = deserialize({M: item}),
+        const dItem  = await deserialize({M: item}),
               object = await getObject({
                 Bucket: this.db.s3Bucket,
                 Key: `${dItem['---hkey']}${dItem['---rkey']}`
@@ -167,7 +167,7 @@ class DynamoDBIterator extends AbstractIterator {
                 if(err.message !== 'Object does not exist') throw err;
               });
         if(!object || !object.Body) return;
-        item.value = demarshalize({
+        item.value = await demarshalize({
           buffer: Buffer.from(object.Body),
           mime: object.ContentType || 'application/octet-stream'
         });

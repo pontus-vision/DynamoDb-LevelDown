@@ -30,7 +30,7 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
 
     this.tableName = tableHash[0];
     this.hashKey   = tableHash[1] || '!';
-    this.s3Bucket  = this.tableName.split(/_/g).join('-');
+    this.s3Bucket  = this.tableName.split(/_/g).filter((x) => x.length).join('-');
     
     Object.entries(dependencies).forEach(([name, dependency]) => this[name] = dependency );
     
@@ -50,7 +50,10 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
 
     try {
       if(this.s3) await promisify(this.s3.createBucket).apply(this.s3, [{ Bucket: this.s3Bucket }]);
-    } catch(err) {}
+    } catch(err) {
+      const exists = (err.message || '').match('Your previous request to create the named bucket succeeded and you already own it');
+      if(!exists) return cb(err);
+    }
 
     this.createTable({
       ProvisionedThroughput: options.dynamodb.ProvisionedThroughput || {
@@ -78,11 +81,12 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         }
       };
       const shouldSpread = isPlainObject(value);
-      if(shouldSpread) params.Item = Object.assign(serialize(value).M, params.Item);
+      debugger
+      if(shouldSpread) params.Item = Object.assign(await serialize(value).M, params.Item);
       const itemData = await promisify(this.dynamoDb.putItem).apply(this.dynamoDb, [params]);
       if(shouldSpread) return cb(null, itemData);
-      const marshalized = marshalize(value);
-      const objectData = await promisify(this.s3.putObject).apply(this.s3, [{
+      const marshalized = await marshalize(value),
+            objectData  = await promisify(this.s3.putObject).apply(this.s3, [{
         Body: marshalized.buffer,
         Bucket: this.s3Bucket,
         Key: `${this.hashKey}${key.toString()}`,
@@ -107,20 +111,20 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
       });
       if(!record || !record.Item) return cb(new Error('NotFound'));
       if(Object.keys(record.Item || {}).length > 2){
-        const deserialized = deserialize({ M: record.Item });
+        const deserialized = await deserialize({ M: record.Item });
         delete deserialized['---hkey'];
         delete deserialized['---rkey'];
-        return cb(null, stringifyJSON(deserialized));
+        return cb(null, await stringifyJSON(deserialized));
       }
       const data = await getObject({
         Bucket: this.s3Bucket, 
         Key: `${this.hashKey}${key.toString()}`
       });
       if(!(data && data.Body)) return cb(null, Buffer.alloc(0));
-      let deserialized = demarshalize({ mime: data.ContentType, buffer: Buffer.from(data.Body) });
+      let deserialized = await demarshalize({ mime: data.ContentType, buffer: Buffer.from(data.Body) });
       if(isBuffer(deserialized))      deserialized = Buffer.from(deserialized);
-      if(isPlainObject(deserialized)) deserialized = stringifyJSON(deserialized);
-      deserialized = (options.asBuffer) ? castToBuffer(deserialized) : deserialized;
+      if(isPlainObject(deserialized)) deserialized = await stringifyJSON(deserialized);
+      deserialized = (options.asBuffer) ? await castToBuffer(deserialized) : deserialized;
       cb(null, deserialized);
     } catch(err) {
       cb(err);
@@ -136,36 +140,25 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
       }
     };
 
+    let error = null;
     try{
       await promisify(this.dynamoDb.deleteItem).apply(this.dynamoDb, [params]);
     }catch(err){
-      // return cb(err);
-    }// finally {
-    
-      try {
-        await promisify(this.s3.deleteObject).apply(this.s3, [{
-          Bucket: this.s3Bucket,
-          Key: `${this.hashKey}${key.toString()}`
-        }]);
-      } catch(err){
-        // return cb(err);
-      }
-    // }
-    cb();
-
-    // this.dynamoDb.deleteItem(params, (err) => {
-    //   if(err) return cb(err);
-    //   this.s3.deleteObject({
-    //     Bucket: this.s3Bucket,
-    //     Key: `${this.hashKey}${key.toString()}`
-    //   }, () => cb());
-    // });
+      error = err;
+    } 
+    try {
+      await promisify(this.s3.deleteObject).apply(this.s3, [{
+        Bucket: this.s3Bucket,
+        Key: `${this.hashKey}${key.toString()}`
+      }]);
+    } catch(err){}
+    cb(error);
   }
   
   async _batch(array, options, cb) {
     const opKeys = {},
           ops    = [];
-    array.forEach((item) => {
+    for(let item of array){
       if (opKeys[item.key]) {
         // We want to ensure that there are no duplicate keys in the same
         // batch request, as DynamoDB won't accept those. That's why we only
@@ -177,21 +170,24 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         if (idx !== -1) ops.splice(idx, 1);
       }
     
-      opKeys[item.key] = true
+      opKeys[item.key] = true;
   
-      if (item.type === 'del') return ops.push({
-        DeleteRequest: {
-          Key: {
-            '---hkey': {S: this.hashKey},
-            '---rkey': {S: item.key.toString()}
+      if (item.type === 'del') {
+        ops.push({
+          DeleteRequest: {
+            Key: {
+              '---hkey': {S: this.hashKey},
+              '---rkey': {S: item.key.toString()}
+            }
           }
-        }
-      });
+        });
+        continue;
+      };
 
-      const value = parseJSON(item.value, true) || item.value;
-
+      const value = (await parseJSON(item.value, true)) || item.value;
+      
       if(isPlainObject(value)) {
-        const serialized = serialize(value, options.asBuffer).M,
+        const serialized = (await serialize(value, options.asBuffer)).M,
               Item       = Object.assign(serialized, {
                 '---hkey': {S: this.hashKey},
                 '---rkey': {S: item.key.toString()}
@@ -202,7 +198,7 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
           }
         });
       } else {
-        const marshalized = marshalize(item.value);
+        const marshalized = await marshalize(item.value);
         ops.push({
           PutRequest: {
             Item: {
@@ -218,7 +214,7 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
           }
         });
       }
-    });
+    }
   
     const params         = {RequestItems: {}},
           batchWriteItem = promisify(this.dynamoDb.batchWriteItem).bind(this.dynamoDb),
@@ -236,15 +232,16 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
           delete req.PutObjectRequest;
           return req;
         });
-        await batchWriteItem(params);
+        const resp = await batchWriteItem(params);
         let i = 0;
         while(i < reqs.length){
           const req = reqs[i] || {}; i++;
           if(!req.PutObjectRequest) continue;
           await putObject(req.PutObjectRequest);
         }
-        loop();
+        loop(resp);
       } catch(err){
+        debugger
         return cb(err);
       }
     }
