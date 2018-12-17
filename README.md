@@ -24,13 +24,6 @@ const levelup  = require('levelup'),
     { DynamoDB
       S3 }     = require('aws-sdk');
 
-const dynamoDBOptions = {
-  region: 'eu-west-1',
-  secretAccessKey: 'abc',
-  accessKeyId: '123',
-  hexEncodeTableName: true
-};
-
 const options = {
   db: AWSDOWN({
     dynamoDb: new DynamoDB({
@@ -78,13 +71,6 @@ const levelup  = require('levelup'),
       AWSDOWN  = require('dynamodbdown'),
     { DynamoDB
       S3 }     = require('aws-sdk');
-
-const dynamoDBOptions = {
-  region: 'eu-west-1',
-  secretAccessKey: 'abc',
-  accessKeyId: '123',
-  hexEncodeTableName: true
-};
 
 const options = {
   db: AWSDOWN({
@@ -158,13 +144,6 @@ AWSDOWN encodes table names in hexadecimal if you set the `dynamodb.hexEncodeTab
 const levelup    = require('levelup'),
       AWSDOWN    = require('dynamodbdown'),
     { DynamoDB } = require('aws-sdk');
-
-const dynamoDBOptions = {
-  region: 'eu-west-1',
-  secretAccessKey: 'abc',
-  accessKeyId: '123',
-  hexEncodeTableName: true
-};
 
 const options = {
   db: AWSDOWN({
