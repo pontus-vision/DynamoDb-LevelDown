@@ -1,5 +1,5 @@
 const through2           = require('through2'),
-    { promisify }        = require('bluebird'),
+    { promisify }        = require('util'),
     { AbstractIterator } = require('abstract-leveldown'),
     { isPlainObject,
       demarshalize,

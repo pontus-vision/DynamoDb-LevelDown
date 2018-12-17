@@ -183,19 +183,48 @@ test('levelup', t => {
     })
   });
 
-  // t.test('put object', t => {
-  //   const object = {
-  //     a: 'b'
-  //   };
-  //   db.put('object', object, { valueEncoding: 'json' }, function (err) {
-  //     t.notOk(err)
-  //     db.get('object', function (err, value) {
-  //       t.notOk(err)
-  //       t.deepEqual(value, buffer)
-  //       t.end()
-  //     })
-  //   })
-  // });
+  t.test('tearDown', t => {
+    server.close(() => {
+      t.end()
+    })
+  })
+
+  t.test('setup', t => {
+    startDbServer(newServer => {
+      server = newServer
+      const dynamoDb   = new DynamoDB(dynamodbOptions),
+            s3         = new S3(),
+            dynamoDown = DynamoDBDOWN({
+              dynamoDb,
+              s3
+            });
+      db = levelup('foobase', { db: dynamoDown, valueEncoding: 'json' });
+      t.end()
+    })
+  })
+
+  t.test('put object', t => {
+    const object = {
+      foo: 'bar',
+      baz: 123,
+      qux: true,
+      corge: [1,2,3,4,5],
+      grault: {
+        foo: 'bar',
+        baz: 123,
+        qux: true,
+        corge: [1,2,3,4,5]
+      }
+    };
+    db.put('object', object, { valueEncoding: 'json' }, function (err) {
+      t.notOk(err)
+      db.get('object', function (err, value) {
+        t.notOk(err)
+        t.deepEqual(value, object)
+        t.end()
+      })
+    })
+  });
 
   t.test('tearDown', t => {
     server.close(() => {

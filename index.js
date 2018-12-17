@@ -14,7 +14,7 @@ const { AbstractLevelDOWN }   = require('abstract-leveldown'),
         castToBuffer,
         stringifyJSON,
         parseJSON }           = require('./lib/utils'),
-      { promisify }           = require('es6-promisify');
+      { promisify }           = require('util');
 
 function hexEncodeTableName (str) {
   var hex = '';
@@ -23,7 +23,7 @@ function hexEncodeTableName (str) {
   return hex;
 }
 
-class DynamoDBDOWN extends AbstractLevelDOWN {
+class AWSDOWN extends AbstractLevelDOWN {
   constructor(dependencies = {}, location){
     super(location);
     const tableHash = location.split('$');
@@ -120,11 +120,11 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         Key: `${this.hashKey}${key.toString()}`
       });
       if(!(data && data.Body)) return cb(null, Buffer.alloc(0));
-      let deserialized = await demarshalize({ mime: data.ContentType, buffer: Buffer.from(data.Body) });
-      if(isBuffer(deserialized))      deserialized = Buffer.from(deserialized);
-      if(isPlainObject(deserialized)) deserialized = await stringifyJSON(deserialized);
-      deserialized = (options.asBuffer) ? await castToBuffer(deserialized) : deserialized;
-      cb(null, deserialized);
+      let output = await demarshalize({ mime: data.ContentType, buffer: Buffer.from(data.Body) });
+      if(options.asBuffer && isBuffer(output)) return cb(null, output);
+      if(data.ContentType === 'application/json') output = await stringifyJSON(output);
+      if(options.asBuffer) output = await castToBuffer(output);
+      cb(null, output);
     } catch(err) {
       cb(err);
     }
@@ -164,7 +164,7 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
         // retain the last operation here.
         const idx = ops.findIndex(someItem => {
           return (someItem.DeleteRequest && someItem.DeleteRequest.Key['---rkey'].S === item.key) ||
-                 (someItem.PutRequest && someItem.PutRequest.Item['---rkey'].S === item.key)
+                 (someItem.PutRequest && someItem.PutRequest.Item['---rkey'].S === item.key);
         });
         if (idx !== -1) ops.splice(idx, 1);
       }
@@ -282,11 +282,11 @@ class DynamoDBDOWN extends AbstractLevelDOWN {
 
 module.exports = function(dependencies){
   const func = function(location){
-    return new DynamoDBDOWN(dependencies, location);
+    return new AWSDOWN(dependencies, location);
   };
   
   func.destroy = async function (name, cb) {
-    const store = globalStore[name]
+    const store = globalStore[name];
 
     if(!store) return cb(new Error('NotFound'));
 
