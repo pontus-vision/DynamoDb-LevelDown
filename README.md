@@ -104,6 +104,7 @@ See [LevelUP options](https://github.com/level/levelup#options) for more informa
 
 ```js
 const levelup = require('levelup');
+const { DynamoDB } = require('aws-sdk');
 const DynamoDbDown = require('dynamodbdown');
 
 const dynamoDBOptions = {
