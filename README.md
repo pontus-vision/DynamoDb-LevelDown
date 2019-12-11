@@ -1,8 +1,6 @@
-AWSDOWN
-=======
+# AWSDOWN
 
-[![Build Status](https://travis-ci.org/ravenstine/awsdown.svg?branch=main)](https://travis-ci.org/ravenstine/awsdown)
-[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+[![Build Status](https://travis-ci.org/ravenstine/awsdown.svg?branch=main)](https://travis-ci.org/ravenstine/awsdown) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 A [LevelDOWN](https://github.com/level/leveldown) API implementation on [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) and [Amazon S3](https://aws.amazon.com/s3/).
 
@@ -10,13 +8,13 @@ This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown
 
 As of version 0.7, LevelUP allows you to pass a `db` option when you create a new instance. This will override the default LevelDOWN store with a LevelDOWN API compatible object. AWSDOWN conforms exactly to the LevelDOWN API, but performs operations against a DynamoDB database.
 
-## Why? ##
+## Why?
 
 This LevelDOWN implementation is different from others such as [AWSDOWN](https://github.com/ravenstine/awsdown) in that objects are cast to actual column types in DynamoDB, and primitive values(e.g. string, number, boolean, buffer/blob) are stored in S3; this allows objects to be natively queryable with DynamoDB, and S3 allows us to store data beyond the 400kb maximum record size that DynamoDB imposes.
 
-The intended use case for this library is with PouchDB, where most database activity involves saving objects(i.e. documents) while a few things such as attachments and database info are better suited for a storage engine like S3.  Compatibility with PouchDB is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as *full replication*, including attachments of any size.  Using this LevelDOWN implementation wtih PouchDB can be useful for regular backups as well as migrating data to CouchDB.
+The intended use case for this library is with PouchDB, where most database activity involves saving objects(i.e. documents) while a few things such as attachments and database info are better suited for a storage engine like S3. Compatibility with PouchDB is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as _full replication_, including attachments of any size. Using this LevelDOWN implementation wtih PouchDB can be useful for regular backups as well as migrating data to CouchDB.
 
-## Usage Example ##
+## Usage Example
 
 ```js
 const levelup  = require('levelup'),
@@ -42,7 +40,7 @@ const options = {
 const db = levelup('tableName', options);
 
 db.put('some string', 'LevelUP string');
-db.put('some binary', new Buffer('LevelUP buffer'));
+db.put('some binary', Buffer.from('LevelUP buffer'));
 
 const dbReadStream = db.createReadStream();
 
@@ -58,13 +56,13 @@ When running the above example, you should get the following console output:
 read stream closed
 ```
 
-## Hash Keys ##
+## Hash Keys
 
-In DynamoDB, keys consist of two parts: a *hash key* and a *range key*. To achieve LevelDB-like behaviour, all keys in a database instance are given the same hash key. That means that you can't do range queries over keys with different hash keys.
+In DynamoDB, keys consist of two parts: a _hash key_ and a _range key_. To achieve LevelDB-like behaviour, all keys in a database instance are given the same hash key. That means that you can't do range queries over keys with different hash keys.
 
 The default hash key is `!`. You can specify it by putting a `$` in the `location` argument. The `$` separates the table name from the hash key.
 
-### Example ###
+### Example
 
 ```js
 const levelup  = require('levelup'),
@@ -102,48 +100,49 @@ db.put('some key', 'some value', => err {
 
 If you are fine with sharing capacity units across multiple database instances or applications, you can reuse a table by specifying the same table name, but different hash keys.
 
-## Table & Bucket Creation ##
+## Table & Bucket Creation
 
-If the table doesn't exist, AWSDOWN will try to create a table.  You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
+If the table doesn't exist, AWSDOWN will try to create a table. You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
 
 AWSDOWN will also attempt to create an S3 bucket if it doesn't already exist.
 
 See [LevelUP options](https://github.com/level/levelup#options) for more information.
 
-### Example ###
+### Example
 
 ```js
-const levelup = require('levelup')
-const AWSDOWN = require('dynamodbdown')
+const levelup = require('levelup');
+const AWSDOWN = require('dynamodbdown');
 
 const dynamoDBOptions = {
   region: 'eu-west-1',
   secretAccessKey: 'abc',
   accessKeyId: '123',
-  ProvisionedThroughput: { // capacity can be specified; defaults to 1/1:
+  ProvisionedThroughput: {
+    // capacity can be specified; defaults to 1/1:
     ReadCapacityUnits: 1,
     WriteCapacityUnits: 1
   }
-}
+};
 
 const options = {
   db: AWSDOWN,
   dynamodb: dynamoDBOptions // required AWS configuration
-}
+};
 
-const db = levelup('tableName', options)
+const db = levelup('tableName', options);
 ```
 
-## Table Name Encoding ##
+## Table Name Encoding
 
 AWSDOWN encodes table names in hexadecimal if you set the `dynamodb.hexEncodeTableName` option to `true`. This can be useful if you'd like pass `location` parameter values to `levelup` that aren't compatible with DynamoDB's restrictions on table names (see [here](docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html)).
 
-### Example ###
+### Example
 
 ```js
-const levelup    = require('levelup'),
-      AWSDOWN    = require('dynamodbdown'),
-    { DynamoDB } = require('aws-sdk');
+const levelup = require('levelup'),
+  AWSDOWN = require('dynamodbdown'),
+  { DynamoDB } = require('aws-sdk');
 
 const options = {
   db: AWSDOWN({
@@ -160,38 +159,32 @@ const options = {
   })
 };
 
-const db = levelup('tableName', options) // the DynamoDB table name will
-                                         // be '7461626c654e616d65'
+const db = levelup('tableName', options); // the DynamoDB table name will
+// be '7461626c654e616d65'
 ```
 
-## Other Considerations ##
+## Other Considerations
 
-S3 provides read-after-write consistency when PUTing a new file, but provides *eventual consistency* for overwrite PUTs and DELETEs.
+S3 provides read-after-write consistency when PUTing a new file, but provides _eventual consistency_ for overwrite PUTs and DELETEs.
 
-This library may not be suitable for multi-process database access, since there is no mechanism for locking DynamoDB tables or S3 buckets.  If you find you need to have multiple processes access your database, it will be necessary to maintain direct-access on a single thread and have other processes communicate with that instance.  Using [multilevel](https://github.com/juliangruber/multilevel) is one premade way of achieving this.
+This library may not be suitable for multi-process database access, since there is no mechanism for locking DynamoDB tables or S3 buckets. If you find you need to have multiple processes access your database, it will be necessary to maintain direct-access on a single thread and have other processes communicate with that instance. Using [multilevel](https://github.com/juliangruber/multilevel) is one premade way of achieving this.
 
-## Changelog ##
+## Changelog
 
 See [here](https://github.com/ravenstine/awsdown/releases).
 
-## Acknowledgments ##
+## Acknowledgments
 
 AWSDOWN has been heavily inspired by:
 
-* [DynamoDBDOWN](https://github.com/KlausTrainer/dynamodbdown) by Klaus Trainer
+- [DynamoDBDOWN](https://github.com/KlausTrainer/dynamodbdown) by Klaus Trainer
 
-## LICENSE ##
+## LICENSE
 
 Copyright 2018 Ben Titcomb
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
