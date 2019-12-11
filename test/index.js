@@ -16,26 +16,32 @@ const DynamoDbOptions = {
 };
 
 const startDbServer = cb => {
-  const server = dynalite({
-    createTableMs: 20,
-    deleteTableMs: 20,
-    updateTableMs: 20
-  });
-
-  server.listen(8000, err => {
-    if (err) throw err;
-
-    const address = server.address();
-    const endpoint = url.format({
-      protocol: 'http',
-      hostname: address.address,
-      port: address.port
+  const serverAddress = process.env.DYNALITE;
+  if (!serverAddress) {
+    const server = dynalite({
+      createTableMs: 20,
+      deleteTableMs: 20,
+      updateTableMs: 20
     });
 
-    DynamoDbOptions.endpoint = endpoint;
+    server.listen(err => {
+      if (err) throw err;
 
-    cb(server);
-  });
+      const address = server.address();
+      const endpoint = url.format({
+        protocol: 'http',
+        hostname: address.address,
+        port: address.port
+      });
+
+      DynamoDbOptions.endpoint = endpoint;
+
+      cb(server);
+    });
+  } else {
+    DynamoDbOptions.endpoint = serverAddress;
+    cb();
+  }
 };
 
 const leveldown = location => {
@@ -61,7 +67,7 @@ const createTestOptions = () => {
       server = newServer;
       t.end();
     });
-  const tearDown = t => server.close(() => t.end());
+  const tearDown = t => (!!server ? server.close(() => t.end()) : t.end());
   const dbSupportTestOptions = {
     bufferKeys: true,
     clear: false,
@@ -125,9 +131,13 @@ test('levelup', t => {
   });
 
   t.test('tearDown', t => {
-    server.close(() => {
+    if (!!server) {
+      server.close(() => {
+        t.end();
+      });
+    } else {
       t.end();
-    });
+    }
   });
 
   t.test('setup', t => {
@@ -166,9 +176,13 @@ test('levelup', t => {
   });
 
   t.test('tearDown', t => {
-    server.close(() => {
+    if (!!server) {
+      server.close(() => {
+        t.end();
+      });
+    } else {
       t.end();
-    });
+    }
   });
 });
 

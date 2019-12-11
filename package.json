@@ -5,6 +5,7 @@
   "scripts": {
     "lint": "standard",
     "test": "tape ./test/**.js | faucet",
+    "dynalite": "dynalite --port 4567 --createTableMs 20 --deleteTableMs 20 --updateTableMs 20",
     "test-ci": "mkdir -p build; tape ./test/**.js | tap-junit -s 'DynamoDBDown All Tests' -o build -n junit.xml",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
