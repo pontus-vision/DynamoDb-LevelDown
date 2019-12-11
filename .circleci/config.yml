@@ -46,6 +46,10 @@ jobs:
           name: Kill DynaLite Server
           command: kill $(ps -ax | grep dynalite | grep -v grep | awk '{print $1}')
 
+      - run:
+          name: Semantic Release
+          command: yarn semantic-release
+
       - codecov/upload:
           file: build/coverage/lcov.info
 

@@ -22,7 +22,7 @@ Other similar implementation have become old, stale, and don't appear to be main
 
 ```js
 const levelup = require('levelup');
-const DynamoDB = require('aws-sdk');
+const { DynamoDB } = require('aws-sdk');
 const DynamoDbDown = require('dynamodbdown');
 
 const options = {
@@ -65,19 +65,13 @@ The default hash key is `!`. You can specify it by putting a `$` in the `locatio
 ### Example
 
 ```js
-const levelup  = require('levelup'),
-      AWSDOWN  = require('dynamodbdown'),
-    { DynamoDB
-      S3 }     = require('aws-sdk');
+const levelup       = require('levelup');
+const { DynamoDB }  = require('aws-sdk');
+const DynamoDbDown  = require('dynamodbdown');
 
 const options = {
-  db: AWSDOWN({
+  db: DynamoDbDown({
     dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    }),
-    s3: new S3({
       region: 'us-west-1',
       secretAccessKey: 'foo',
       accessKeyId: 'bar'
@@ -100,11 +94,9 @@ db.put('some key', 'some value', => err {
 
 If you are fine with sharing capacity units across multiple database instances or applications, you can reuse a table by specifying the same table name, but different hash keys.
 
-## Table & Bucket Creation
+## Table Creation
 
-If the table doesn't exist, AWSDOWN will try to create a table. You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
-
-AWSDOWN will also attempt to create an S3 bucket if it doesn't already exist.
+If the table doesn't exist, `DynamoDbDown` will try to create a table. You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
 
 See [LevelUP options](https://github.com/level/levelup#options) for more information.
 
@@ -112,7 +104,7 @@ See [LevelUP options](https://github.com/level/levelup#options) for more informa
 
 ```js
 const levelup = require('levelup');
-const AWSDOWN = require('dynamodbdown');
+const DynamoDbDown = require('dynamodbdown');
 
 const dynamoDBOptions = {
   region: 'eu-west-1',
@@ -126,7 +118,7 @@ const dynamoDBOptions = {
 };
 
 const options = {
-  db: AWSDOWN,
+  db: DynamoDbDown,
   dynamodb: dynamoDBOptions // required AWS configuration
 };
 
@@ -135,23 +127,18 @@ const db = levelup('tableName', options);
 
 ## Table Name Encoding
 
-AWSDOWN encodes table names in hexadecimal if you set the `dynamodb.hexEncodeTableName` option to `true`. This can be useful if you'd like pass `location` parameter values to `levelup` that aren't compatible with DynamoDB's restrictions on table names (see [here](docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html)).
+`DynamoDbDown` encodes table names in hexadecimal if you set the `dynamodb.hexEncodeTableName` option to `true`. This can be useful if you'd like pass `location` parameter values to `levelup` that aren't compatible with DynamoDB's restrictions on table names (see [here](docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html)).
 
 ### Example
 
 ```js
-const levelup = require('levelup'),
-  AWSDOWN = require('dynamodbdown'),
-  { DynamoDB } = require('aws-sdk');
+const levelup = require('levelup');
+const { DynamoDB } = require('aws-sdk');
+const DynamoDbDown = require('dynamodbdown');
 
 const options = {
-  db: AWSDOWN({
+  db: DynamoDbDown({
     dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    }),
-    s3: new S3({
       region: 'us-west-1',
       secretAccessKey: 'foo',
       accessKeyId: 'bar'
@@ -165,23 +152,24 @@ const db = levelup('tableName', options); // the DynamoDB table name will
 
 ## Other Considerations
 
-S3 provides read-after-write consistency when PUTing a new file, but provides _eventual consistency_ for overwrite PUTs and DELETEs.
-
-This library may not be suitable for multi-process database access, since there is no mechanism for locking DynamoDB tables or S3 buckets. If you find you need to have multiple processes access your database, it will be necessary to maintain direct-access on a single thread and have other processes communicate with that instance. Using [multilevel](https://github.com/juliangruber/multilevel) is one premade way of achieving this.
+This library may not be suitable for multi-process database access, since there is no mechanism for locking DynamoDB tables. If you find you need to have multiple processes access your database, it will be necessary to maintain direct-access on a single thread and have other processes communicate with that instance. Using [multilevel](https://github.com/juliangruber/multilevel) is one pre-made way of achieving this.
 
 ## Changelog
 
-See [here](https://github.com/ravenstine/awsdown/releases).
+See [here](https://github.com/GioCirque/DynamoDbDown/releases).
 
 ## Acknowledgments
 
-AWSDOWN has been heavily inspired by:
+DynamoDbDown has been heavily inspired by, and/or forked from:
 
-- [DynamoDBDOWN](https://github.com/KlausTrainer/dynamodbdown) by Klaus Trainer
+- Ten Bitcomb's [AWSDOWN](https://github.com/Ravenstine/awsdown)
+- Klaus Trainer's [DynamoDBDOWN](https://github.com/KlausTrainer/dynamodbdown)
+- David Guttman's [DynamoDown](https://github.com/davidguttman/dynamodown)
+- Jed Schmidt's [dynamo-down](https://github.com/jed/dynamo-down)
 
 ## LICENSE
 
-Copyright 2018 Ben Titcomb
+Copyright 2019 Gio Palacino
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
