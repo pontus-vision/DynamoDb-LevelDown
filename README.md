@@ -1,35 +1,33 @@
 # DynamoDbDown
 
-[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDbDown.svg?style=svg)](https://circleci.com/gh/GioCirque/DynamoDbDown)
+[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDbDown.svg?style=shield)](https://circleci.com/gh/GioCirque/DynamoDbDown) [![codecov](https://codecov.io/gh/GioCirque/DynamoDbDown/branch/master/graph/badge.svg)](https://codecov.io/gh/GioCirque/DynamoDbDown) [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 A [LevelDOWN](https://github.com/level/leveldown) API implementation of [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
-This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for object storage and [Amazon S3](https://aws.amazon.com/s3/) for primitive value storage. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
+Originally forked from [Ten Bitcomb's AWSDOWN](https://github.com/Ravenstine/awsdown) which forked from [Klaus Trainer's DynamoDbDown](https://github.com/KlausTrainer/dynamodbdown) which was "heavily inspired by" [David Guttman's DynamoDown](https://github.com/davidguttman/dynamodown) and [Jed Schmidt's dynamo-down](https://github.com/jed/dynamo-down)
 
-As of version 0.7, LevelUP allows you to pass a `db` option when you create a new instance. This will override the default LevelDOWN store with a LevelDOWN API compatible object. AWSDOWN conforms exactly to the LevelDOWN API, but performs operations against a DynamoDB database.
+This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for persistence. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
+
+As of version 0.7, [LevelUP](https://github.com/level/levelup) allows you to pass a `db` option when you create a new instance. This will override the default [LevelDOWN](https://github.com/level/leveldown) store with a [LevelDOWN](https://github.com/level/leveldown) API compatible object. `DynamoDbDown` conforms exactly to the [LevelDOWN](https://github.com/level/leveldown) API, but performs operations against a DynamoDB database.
 
 ## Why?
 
-This LevelDOWN implementation is different from others such as [AWSDOWN](https://github.com/ravenstine/awsdown) in that objects are cast to actual column types in DynamoDB, and primitive values(e.g. string, number, boolean, buffer/blob) are stored in S3; this allows objects to be natively queryable with DynamoDB, and S3 allows us to store data beyond the 400kb maximum record size that DynamoDB imposes.
+The intended use case for this library is with [PouchDB](https://github.com/pouchdb/pouchdb). Compatibility with [PouchDB](https://github.com/pouchdb/pouchdb) is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as _full replication_, including attachments of any size. Using this [LevelDOWN](https://github.com/level/leveldown) implementation with [PouchDB](https://github.com/pouchdb/pouchdb) can be useful for regular backups as well as migrating data to CouchDB.
 
-The intended use case for this library is with PouchDB, where most database activity involves saving objects(i.e. documents) while a few things such as attachments and database info are better suited for a storage engine like S3. Compatibility with PouchDB is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as _full replication_, including attachments of any size. Using this LevelDOWN implementation wtih PouchDB can be useful for regular backups as well as migrating data to CouchDB.
+## Why the fork?
+
+Other similar implementation have become old, stale, and don't appear to be maintained any more. This fork has updated all dependencies, and runs [LevelUP](https://github.com/level/levelup) and [LevelDOWN](https://github.com/level/leveldown) automated tests to help ensure quality.
 
 ## Usage Example
 
 ```js
-const levelup  = require('levelup'),
-      AWSDOWN  = require('dynamodbdown'),
-    { DynamoDB
-      S3 }     = require('aws-sdk');
+const levelup = require('levelup');
+const DynamoDB = require('aws-sdk');
+const DynamoDbDown = require('dynamodbdown');
 
 const options = {
-  db: AWSDOWN({
+  db: DynamoDbDown({
     dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    }),
-    s3: new S3({
       region: 'us-west-1',
       secretAccessKey: 'foo',
       accessKeyId: 'bar'
@@ -45,12 +43,14 @@ db.put('some binary', Buffer.from('LevelUP buffer'));
 const dbReadStream = db.createReadStream();
 
 dbReadStream.on('data', console.log);
-dbReadStream.on('close', () => { console.log('read stream closed') });
+dbReadStream.on('close', () => {
+  console.log('read stream closed');
+});
 ```
 
 When running the above example, you should get the following console output:
 
-```
+```sh
 { key: 'some binary', value: 'LevelUP buffer' }
 { key: 'some string', value: 'LevelUP string' }
 read stream closed
