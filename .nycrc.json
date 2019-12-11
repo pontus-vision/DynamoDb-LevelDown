@@ -1,6 +1,6 @@
 {
   "temp-dir": "./.tmp",
   "report-dir": "./build/coverage",
-  "reporter": ["lcov", "clover", "cobertura", "text"],
+  "reporter": ["lcov"],
   "exclude": ["test/*"]
 }
