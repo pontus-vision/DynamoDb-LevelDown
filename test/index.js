@@ -1,7 +1,7 @@
 'use strict';
 
 const url = require('url');
-const test = require('tape');
+const test = require('tape-catch');
 const dynalite = require('dynalite');
 const levelup = require('levelup');
 const suite = require('abstract-leveldown/test');
