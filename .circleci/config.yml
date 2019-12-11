@@ -27,19 +27,21 @@ jobs:
 
       - run:
           name: Run DynaLite Server
-          command: yarn dynalite
+          command: |
+            set +e
+            yarn dynalite
           background: true
 
       # run tests!
       - run:
           name: Testing
-          command: |
-            export DYNALITE=http://localhost:4567
-            yarn test-ci
+          command: yarn test-ci
+          environment:
+            DYNALITE: http://localhost:4567
 
       - run:
           name: Kill DynaLite Server
           command: kill $(ps -ax | grep dynalite | grep -v grep | awk '{print $1}')
 
       - store_test_results:
-          path: ~/repo/build/junit.xml
+          path: ~/repo/build/
