@@ -1,5 +1,5 @@
 {
-  "name": "dynamodbdown",
+  "name": "dynamodb-leveldown",
   "description": "A LevelDOWN API implementation of AWS DynamoDB.",
   "main": "index.js",
   "scripts": {
@@ -43,7 +43,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/GioCirque/DynamoDbDown.git"
+    "url": "https://github.com/GioCirque/DynamoDb-LevelDown.git"
   },
   "release": {
     "branch": "master",
