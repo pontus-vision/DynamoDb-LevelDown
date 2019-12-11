@@ -1,5 +1,5 @@
 {
-  "name": "DynamoDBDown",
+  "name": "dynamodbdown",
   "description": "A LevelDOWN API implementation of AWS DynamoDB.",
   "main": "index.js",
   "scripts": {
@@ -57,6 +57,11 @@
               "type": "docs",
               "scope": "README",
               "release": "patch"
+            },
+            {
+              "type": "fix",
+              "scope": "package",
+              "release": "minor"
             },
             {
               "type": "refactor",
