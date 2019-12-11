@@ -1,8 +1,8 @@
-# AWSDOWN
+# DynamoDbDown
 
-[![Build Status](https://travis-ci.org/ravenstine/awsdown.svg?branch=main)](https://travis-ci.org/ravenstine/awsdown) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDbDown.svg?style=svg)](https://circleci.com/gh/GioCirque/DynamoDbDown)
 
-A [LevelDOWN](https://github.com/level/leveldown) API implementation on [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) and [Amazon S3](https://aws.amazon.com/s3/).
+A [LevelDOWN](https://github.com/level/leveldown) API implementation of [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
 This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for object storage and [Amazon S3](https://aws.amazon.com/s3/) for primitive value storage. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
 

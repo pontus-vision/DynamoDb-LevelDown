@@ -1,4 +1,6 @@
-version: 2
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.5
 jobs:
   build:
     docker:
@@ -29,7 +31,8 @@ jobs:
           name: Run DynaLite Server
           command: |
             set +e
-            yarn dynalite
+            set +o pipefail
+            yarn dynalite || true
           background: true
 
       # run tests!
@@ -47,4 +50,7 @@ jobs:
           path: ~/repo/build/
 
       - store_artifacts:
-          path: ~/repo/build/junit/
+          path: ~/repo/build/
+
+      - codecov/upload:
+          file: ~/repo/build/coverage/lcov.info
