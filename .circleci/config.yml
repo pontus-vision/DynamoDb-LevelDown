@@ -46,11 +46,11 @@ jobs:
           name: Kill DynaLite Server
           command: kill $(ps -ax | grep dynalite | grep -v grep | awk '{print $1}')
 
+      - codecov/upload:
+          file: build/coverage/lcov.info
+
       - store_test_results:
-          path: ~/repo/build/
+          path: build/
 
       - store_artifacts:
-          path: ~/repo/build/
-
-      - codecov/upload:
-          file: ~/repo/build/coverage/lcov.info
+          path: build/
