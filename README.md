@@ -1,6 +1,6 @@
 # DynamoDbDown
 
-[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDbDown.svg?style=shield)](https://circleci.com/gh/GioCirque/DynamoDbDown) [![codecov](https://codecov.io/gh/GioCirque/DynamoDbDown/branch/master/graph/badge.svg)](https://codecov.io/gh/GioCirque/DynamoDbDown) [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDb-LevelDown.svg?style=shield)](https://circleci.com/gh/GioCirque/LevelDown) [![codecov](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown/branch/master/graph/badge.svg)](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown) [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 A [LevelDOWN](https://github.com/level/leveldown) API implementation of [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
