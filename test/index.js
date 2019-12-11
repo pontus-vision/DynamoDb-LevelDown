@@ -22,7 +22,7 @@ const startDbServer = cb => {
     updateTableMs: 20
   });
 
-  server.listen(8080, err => {
+  server.listen(8000, err => {
     if (err) throw err;
 
     const address = server.address();
