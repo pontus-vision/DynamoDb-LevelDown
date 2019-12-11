@@ -45,3 +45,6 @@ jobs:
 
       - store_test_results:
           path: ~/repo/build/
+
+      - store_artifacts:
+          path: ~/repo/build/junit/

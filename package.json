@@ -6,7 +6,7 @@
     "lint": "standard",
     "test": "tape ./test/**.js | faucet",
     "dynalite": "dynalite --port 4567 --createTableMs 20 --deleteTableMs 20 --updateTableMs 20",
-    "test-ci": "mkdir -p build/tape; tape ./test/**.js | tap-junit -s 'DynamoDBDown All Tests' -o build/tape -n results.xml",
+    "test-ci": "mkdir -p build/junit; tape ./test/**.js | tap-junit -s 'DynamoDBDown All Tests' -o build/junit -n results.xml",
     "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
   "author": "Gio Palacino <gio@palacino.net>",
