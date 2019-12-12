@@ -3,9 +3,9 @@
 const { DynamoDbDown } = require('./lib/dynamoDbDown')
 
 const globalStore = {}
-module.exports = function (dependencies) {
+module.exports = function (dynamoDb) {
   const func = function (location) {
-    const instance = new DynamoDbDown(dependencies, location)
+    const instance = new DynamoDbDown(dynamoDb, location)
     globalStore[location] = instance
     return instance
   }

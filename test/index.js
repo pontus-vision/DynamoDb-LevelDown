@@ -3,8 +3,9 @@
 const url = require('url')
 const test = require('tape-catch')
 const dynalite = require('dynalite')
-const levelup = require('levelup')
 const suite = require('abstract-leveldown/test')
+
+const levelup = require('levelup')
 const { DynamoDB } = require('aws-sdk')
 const DynamoDbDown = require('../index')
 
@@ -46,11 +47,14 @@ const startDbServer = cb => {
 
 const leveldown = location => {
   const dynamoDb = new DynamoDB(DynamoDbOptions)
-  const dynamoDown = DynamoDbDown({ dynamoDb })(location)
+  const dynamoDown = DynamoDbDown(dynamoDb)(location)
 
   dynamoDown.oldOpen = dynamoDown._open
   dynamoDown._open = function (opts, cb) {
-    return dynamoDown.oldOpen.bind(dynamoDown)(Object.assign({ dynamodb: DynamoDbOptions }, opts), cb)
+    return dynamoDown.oldOpen.bind(dynamoDown)(
+      Object.assign({ dynamodb: DynamoDbOptions }, opts),
+      cb
+    )
   }
 
   return dynamoDown
@@ -99,9 +103,7 @@ test('levelup', t => {
     startDbServer(newServer => {
       server = newServer
       const dynamoDb = new DynamoDB(DynamoDbOptions)
-      const dynamoDown = DynamoDbDown({
-        dynamoDb
-      })
+      const dynamoDown = DynamoDbDown(dynamoDb)
       db = levelup(dynamoDown('foobase'))
       t.end()
     })
@@ -144,9 +146,7 @@ test('levelup', t => {
     startDbServer(newServer => {
       server = newServer
       const dynamoDb = new DynamoDB(DynamoDbOptions)
-      const dynamoDown = DynamoDbDown({
-        dynamoDb
-      })
+      const dynamoDown = DynamoDbDown(dynamoDb)
       db = levelup(dynamoDown('foobase'), { valueEncoding: 'json' })
       t.end()
     })

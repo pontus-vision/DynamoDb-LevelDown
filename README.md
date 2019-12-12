@@ -25,17 +25,15 @@ const levelup = require('levelup');
 const { DynamoDB } = require('aws-sdk');
 const DynamoDbDown = require('dynamodbdown');
 
-const options = {
-  db: DynamoDbDown({
-    dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    })
+const factory = DynamoDbDown(
+  new DynamoDB({
+    region: 'us-west-1',
+    secretAccessKey: 'foo',
+    accessKeyId: 'bar'
   })
-};
+);
 
-const db = levelup('tableName', options);
+const db = levelup(factory('tableName'));
 
 db.put('some string', 'LevelUP string');
 db.put('some binary', Buffer.from('LevelUP buffer'));
@@ -69,19 +67,15 @@ const levelup       = require('levelup');
 const { DynamoDB }  = require('aws-sdk');
 const DynamoDbDown  = require('dynamodbdown');
 
-const options = {
-  db: DynamoDbDown({
-    dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    })
+const factory = DynamoDbDown(
+  new DynamoDB({
+    region: 'us-west-1',
+    secretAccessKey: 'foo',
+    accessKeyId: 'bar'
   })
-};
+);
 
-const db = levelup('tableName', options);
-
-const db = levelup('tableName$hashKey', options)
+const db = levelup(factory('tableName$hashKey'));
 
 db.put('some key', 'some value', => err {
   // the DynamoDB object would now look like this:
@@ -109,8 +103,8 @@ const DynamoDbDown = require('dynamodbdown');
 
 const dynamoDBOptions = {
   region: 'eu-west-1',
-  secretAccessKey: 'abc',
-  accessKeyId: '123',
+  secretAccessKey: 'foo',
+  accessKeyId: 'bar',
   ProvisionedThroughput: {
     // capacity can be specified; defaults to 1/1:
     ReadCapacityUnits: 1,
@@ -118,12 +112,9 @@ const dynamoDBOptions = {
   }
 };
 
-const options = {
-  db: DynamoDbDown,
-  dynamodb: dynamoDBOptions // required AWS configuration
-};
+const factory = DynamoDbDown(new DynamoDB(dynamoDBOptions));
 
-const db = levelup('tableName', options);
+const db = levelup(factory('tableName'));
 ```
 
 ## Table Name Encoding
@@ -137,18 +128,20 @@ const levelup = require('levelup');
 const { DynamoDB } = require('aws-sdk');
 const DynamoDbDown = require('dynamodbdown');
 
-const options = {
-  db: DynamoDbDown({
-    dynamoDb: new DynamoDB({
-      region: 'us-west-1',
-      secretAccessKey: 'foo',
-      accessKeyId: 'bar'
-    })
+const factory = DynamoDbDown(
+  new DynamoDB({
+    region: 'us-west-1',
+    secretAccessKey: 'foo',
+    accessKeyId: 'bar'
   })
-};
+);
 
-const db = levelup('tableName', options); // the DynamoDB table name will
-// be '7461626c654e616d65'
+const db = levelup(factory('tableName'));
+db.open({ dynamodb: { hexEncodeTableName: true } }, instance => {
+  // instance.tableName will be 'tableName'
+  // instance.encodedTableName will be '7461626c654e616d65'
+  // NOTE: encodedTableName is used internally for all purposes
+});
 ```
 
 ## Other Considerations
