@@ -1,6 +1,6 @@
 # DynamoDbDown
 
-[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDb-LevelDown.svg?style=shield)](https://circleci.com/gh/GioCirque/DynamoDb-LevelDown) [![codecov](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown/graph/badge.svg)](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown) ![Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/github/GioCirque/dynamodb-leveldown.svg) [![NPM version](https://img.shields.io/npm/v/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![Types](https://img.shields.io/npm/types/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+[![CircleCI](https://circleci.com/gh/GioCirque/DynamoDb-LevelDown.svg?style=shield)](https://circleci.com/gh/GioCirque/DynamoDb-LevelDown) [![codecov](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown/graph/badge.svg)](https://codecov.io/gh/GioCirque/DynamoDb-LevelDown) [![Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/github/GioCirque/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![NPM version](https://img.shields.io/npm/v/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![NPM license](https://img.shields.io/npm/l/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![Types](https://img.shields.io/npm/types/dynamodb-leveldown.svg)](https://www.npmjs.com/package/dynamodb-leveldown) [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 A [LevelDOWN](https://github.com/level/leveldown) API implementation of [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
@@ -23,7 +23,7 @@ Other similar implementation have become old, stale, and don't appear to be main
 ```js
 const levelup = require('levelup');
 const { DynamoDB } = require('aws-sdk');
-const DynamoDbDown = require('dynamodbdown');
+const { DynamoDbDown } = require('dynamodbdown');
 
 const factory = DynamoDbDown(
   new DynamoDB({
@@ -63,9 +63,9 @@ The default hash key is `!`. You can specify it by putting a `$` in the `locatio
 ### Example
 
 ```js
-const levelup       = require('levelup');
-const { DynamoDB }  = require('aws-sdk');
-const DynamoDbDown  = require('dynamodbdown');
+const levelup = require('levelup');
+const { DynamoDB } = require('aws-sdk');
+const { DynamoDbDown } = require('dynamodbdown');
 
 const factory = DynamoDbDown(
   new DynamoDB({
@@ -99,14 +99,17 @@ See [LevelUP options](https://github.com/level/levelup#options) for more informa
 ```js
 const levelup = require('levelup');
 const { DynamoDB } = require('aws-sdk');
-const DynamoDbDown = require('dynamodbdown');
+const { DynamoDbDown } = require('dynamodbdown');
 
 const dynamoDBOptions = {
   region: 'eu-west-1',
   secretAccessKey: 'foo',
-  accessKeyId: 'bar',
+  accessKeyId: 'bar'
+};
+
+// capacity can be specified; defaults to 1/1:
+const factoryOptions = {
   ProvisionedThroughput: {
-    // capacity can be specified; defaults to 1/1:
     ReadCapacityUnits: 1,
     WriteCapacityUnits: 1
   }
@@ -114,34 +117,7 @@ const dynamoDBOptions = {
 
 const factory = DynamoDbDown(new DynamoDB(dynamoDBOptions));
 
-const db = levelup(factory('tableName'));
-```
-
-## Table Name Encoding
-
-`DynamoDbDown` encodes table names in hexadecimal if you set the `dynamodb.hexEncodeTableName` option to `true`. This can be useful if you'd like pass `location` parameter values to `levelup` that aren't compatible with DynamoDB's restrictions on table names (see [here](docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html)).
-
-### Example
-
-```js
-const levelup = require('levelup');
-const { DynamoDB } = require('aws-sdk');
-const DynamoDbDown = require('dynamodbdown');
-
-const factory = DynamoDbDown(
-  new DynamoDB({
-    region: 'us-west-1',
-    secretAccessKey: 'foo',
-    accessKeyId: 'bar'
-  })
-);
-
-const db = levelup(factory('tableName'));
-db.open({ dynamodb: { hexEncodeTableName: true } }, instance => {
-  // instance.tableName will be 'tableName'
-  // instance.encodedTableName will be '7461626c654e616d65'
-  // NOTE: encodedTableName is used internally for all purposes
-});
+const db = levelup(factory('tableName'), factoryOptions);
 ```
 
 ## Other Considerations

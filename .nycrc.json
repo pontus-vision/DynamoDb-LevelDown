@@ -1,6 +1,7 @@
 {
+  "extends": "@istanbuljs/nyc-config-typescript",
   "temp-dir": "./.tmp",
   "report-dir": "./build/coverage",
-  "reporter": ["lcov"],
-  "exclude": ["test/*"]
+  "reporter": ["lcov", "text"],
+  "exclude": ["test/**"]
 }
