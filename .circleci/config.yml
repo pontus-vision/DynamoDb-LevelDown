@@ -11,11 +11,9 @@ jobs:
     steps:
       - checkout
 
-      # Download and cache dependencies
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
-            # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
 
       - run:
@@ -35,7 +33,6 @@ jobs:
             yarn dynalite || true
           background: true
 
-      # run tests!
       - run:
           name: Testing
           command: yarn test-ci
@@ -46,10 +43,6 @@ jobs:
           name: Kill DynaLite Server
           command: kill $(ps -ax | grep dynalite | grep -v grep | awk '{print $1}')
 
-      - run:
-          name: Semantic Release
-          command: yarn semantic-release
-
       - codecov/upload:
           file: build/coverage/lcov.info
 
@@ -58,3 +51,14 @@ jobs:
 
       - store_artifacts:
           path: build/
+
+      - run:
+          name: Semantic Release
+          command: |
+            rm -rf ./.circleci
+            rm -rf ./.tmp
+            rm -rf ./.vscode
+            rm -rf ./build
+            rm -f ./.gitignore
+            rm -f ./.nycrc.json
+            yarn semantic-release

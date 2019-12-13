@@ -1,12 +1,16 @@
 {
   "name": "dynamodb-leveldown",
   "description": "A LevelDOWN API implementation of AWS DynamoDB.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "pretest": "tsc",
     "test": "tape ./test/**.js | faucet",
     "dynalite": "dynalite --port 4567 --createTableMs 20 --deleteTableMs 20 --updateTableMs 20",
     "test-ci": "tsc && nyc tape ./test/**.js | tap-junit -s 'DynamoDBDown All Tests' -o build/junit -n results.xml || true"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GioCirque/DynamoDb-LevelDown.git"
   },
   "author": "Gio Palacino <gio@palacino.net>",
   "license": "Apache-2.0",
@@ -25,13 +29,13 @@
     "pouchdb"
   ],
   "dependencies": {
-    "abstract-leveldown": "6.2.2",
-    "through2": "3.0.1"
+    "abstract-leveldown": "^6.2.2",
+    "through2": "^3.0.1"
   },
   "devDependencies": {
-    "@types/abstract-leveldown": "^5.0.1",
-    "@types/through2": "^2.0.34",
-    "aws-sdk": "2.585.0",
+    "@types/abstract-leveldown": "5.0.1",
+    "@types/through2": "2.0.34",
+    "aws-sdk": "2.589.0",
     "dynalite": "3.1.2",
     "faucet": "0.0.1",
     "levelup": "4.3.2",
@@ -41,11 +45,7 @@
     "tap-nyc": "1.0.3",
     "tape": "4.11.0",
     "tape-catch": "1.0.6",
-    "typescript": "^3.7.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/GioCirque/DynamoDb-LevelDown.git"
+    "typescript": "3.7.3"
   },
   "release": {
     "branch": "master",
