@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "es6",
+      "dom"
+    ],
+    "target": "ES6",
+    "outDir": "dist",
+    "module": "CommonJS",
+    "declarationDir": "types",
+    "moduleResolution": "Node",
+    "strict": true,
+    "declaration": true,
+    "alwaysStrict": true,
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": true,
+  },
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
+}

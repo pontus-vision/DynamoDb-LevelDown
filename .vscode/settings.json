@@ -1,10 +1,7 @@
 {
-  "standard.enable": true,
-  "standard.run": "onType",
-  "standard.autoFixOnSave": true,
-  "standard.usePackageJson": true,
-  "javascript.validate.enable": false,
-  "[javascript]": {
-    "editor.defaultFormatter": "chenxsan.vscode-standardjs"
-  },
+  "standard.enable": false,
+  "cSpell.words": [
+    "dbot",
+    "leveldown"
+  ]
 }

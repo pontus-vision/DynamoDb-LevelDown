@@ -7,7 +7,7 @@ const suite = require('abstract-leveldown/test')
 
 const levelup = require('levelup')
 const { DynamoDB } = require('aws-sdk')
-const DynamoDbDown = require('../index')
+const { DynamoDbDown } = require('../dist/index')
 
 const DynamoDbOptions = {
   region: 'us-east-1',
