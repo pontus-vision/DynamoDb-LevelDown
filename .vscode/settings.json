@@ -2,6 +2,8 @@
   "standard.enable": false,
   "cSpell.words": [
     "dbot",
-    "leveldown"
+    "dynalite",
+    "leveldown",
+    "posttest"
   ]
 }

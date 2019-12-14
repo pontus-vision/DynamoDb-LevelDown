@@ -13,6 +13,12 @@ export function cloneObject<T>(obj: T): T {
   return temp;
 }
 
+export async function maybeDelay(ms?: number): Promise<void> {
+  if (!!ms && ms > 0) {
+    await new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
 export function withoutKeys<T extends DynamoDB.ItemCollectionKeyAttributeMap>(item: T): T {
   if (!item) return item;
 

@@ -107,11 +107,11 @@ const dynamoDBOptions = {
   accessKeyId: 'bar'
 };
 
-// capacity can be specified; defaults to 1/1:
+// capacity can be specified; defaults to 5/5:
 const factoryOptions = {
   ProvisionedThroughput: {
-    ReadCapacityUnits: 1,
-    WriteCapacityUnits: 1
+    ReadCapacityUnits: 10,
+    WriteCapacityUnits: 10
   }
 };
 

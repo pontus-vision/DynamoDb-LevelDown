@@ -2,6 +2,12 @@ import { DynamoDB } from 'aws-sdk';
 import { AbstractIteratorOptions } from 'abstract-leveldown';
 
 export type LevelKey = string;
+export type DynamoBillingMode = 'PROVISIONED' | 'PAY_PER_REQUEST' | string;
+
+export interface DynamoDbDownOptions {
+  useConsistency?: boolean;
+  billingMode?: DynamoBillingMode;
+}
 
 export interface KeyedItem {
   readonly key: string;

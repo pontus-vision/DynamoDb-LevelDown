@@ -3,19 +3,16 @@ import { DynamoDB } from 'aws-sdk';
 import { WaiterConfiguration } from 'aws-sdk/lib/service';
 
 import { serialize, dataFromItem, rangeKeyFrom } from './utils';
-import { BatchItem, Keys } from './types';
+import { BatchItem, Keys, DynamoBillingMode } from './types';
 
 const MAX_BATCH_SIZE = 25;
 const RESOURCE_WAITER_DELAY = 1;
 const defaultProvisionedThroughput = {
-  ReadCapacityUnits: 1,
-  WriteCapacityUnits: 1
+  ReadCapacityUnits: 5,
+  WriteCapacityUnits: 5
 };
 
 export class DynamoDbAsync {
-  private hashKey: string;
-  private dynamoDb: DynamoDB;
-  private tableName: string;
   private queryAsync: (params: DynamoDB.Types.QueryInput) => Promise<DynamoDB.Types.QueryOutput>;
   private waitForAsync: (
     state: 'tableExists' | 'tableNotExists',
@@ -33,10 +30,13 @@ export class DynamoDbAsync {
     params: DynamoDB.Types.BatchWriteItemInput
   ) => Promise<DynamoDB.Types.BatchWriteItemOutput>;
 
-  constructor(dynamoDb: DynamoDB, tableName: string, hashKey: string) {
-    this.hashKey = hashKey;
-    this.dynamoDb = dynamoDb;
-    this.tableName = tableName;
+  constructor(
+    private dynamoDb: DynamoDB,
+    private tableName: string,
+    private hashKey: string,
+    private useConsistency: boolean = false,
+    private billingMode: DynamoBillingMode = 'PAY_PER_REQUEST'
+  ) {
     this.queryAsync = promisify(this.dynamoDb.query).bind(this.dynamoDb);
     // @ts-ignore - Possible override detection issue with AWS types
     this.waitForAsync = promisify(this.dynamoDb.waitFor).bind(this.dynamoDb);
@@ -61,7 +61,8 @@ export class DynamoDbAsync {
   private queryItem(key: string): DynamoDB.GetItemInput {
     return {
       TableName: this.tableName,
-      ...this.itemKey(key)
+      ...this.itemKey(key),
+      ConsistentRead: this.useConsistency
     };
   }
 
@@ -128,7 +129,8 @@ export class DynamoDbAsync {
   async query(params: Pick<DynamoDB.QueryInput, any>) {
     return this.queryAsync({
       TableName: this.tableName,
-      ...params
+      ...params,
+      ConsistentRead: this.useConsistency
     });
   }
 
@@ -157,7 +159,8 @@ export class DynamoDbAsync {
         { AttributeName: Keys.HASH_KEY, KeyType: 'HASH' },
         { AttributeName: Keys.RANGE_KEY, KeyType: 'RANGE' }
       ],
-      ProvisionedThroughput: throughput
+      BillingMode: this.billingMode,
+      ProvisionedThroughput: this.billingMode == 'PROVISIONED' ? throughput : undefined
     });
     await this.waitForAsync('tableExists', {
       TableName: this.tableName,

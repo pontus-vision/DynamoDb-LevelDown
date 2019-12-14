@@ -13,22 +13,24 @@ import {
 
 import { DynamoDbIterator } from './iterator';
 import { DynamoDbAsync } from './dynamoDbAsync';
-import { isBuffer } from './utils';
+import { DynamoDbDownOptions } from './types';
+import { isBuffer, maybeDelay } from './utils';
 
 export class DynamoDbDown extends AbstractLevelDOWN {
   private hashKey: string;
   private tableName: string;
-  private dynamoDb: DynamoDB;
   private dynamoDbAsync: DynamoDbAsync;
 
-  constructor(dynamoDb: DynamoDB, location: string) {
+  constructor(private dynamoDb: DynamoDB, location: string, options?: DynamoDbDownOptions) {
     super(location);
 
+    const useConsistency = options?.useConsistency || false;
     const tableHash = location.split('$');
+
     this.tableName = tableHash[0];
     this.hashKey = tableHash[1] || '!';
     this.dynamoDb = dynamoDb;
-    this.dynamoDbAsync = new DynamoDbAsync(this.dynamoDb, this.tableName, this.hashKey);
+    this.dynamoDbAsync = new DynamoDbAsync(this.dynamoDb, this.tableName, this.hashKey, useConsistency);
   }
 
   async _close(cb: ErrorCallback) {

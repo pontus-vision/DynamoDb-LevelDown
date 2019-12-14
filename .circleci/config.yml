@@ -5,11 +5,14 @@ jobs:
   build:
     docker:
       - image: circleci/node:12.13
+        environment:
+          DYNALITE: http://0.0.0.0:4567
 
     working_directory: ~/repo
 
     steps:
       - checkout
+      - setup_remote_docker
 
       - restore_cache:
           keys:
@@ -35,9 +38,7 @@ jobs:
 
       - run:
           name: Testing
-          command: yarn test-ci
-          environment:
-            DYNALITE: http://localhost:4567
+          command: yarn test
 
       - run:
           name: Kill DynaLite Server

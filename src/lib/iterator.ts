@@ -14,7 +14,8 @@ import {
   keyConditionsFor,
   withoutKeys,
   rangeKeyFrom,
-  createRangeKeyCondition
+  createRangeKeyCondition,
+  maybeDelay
 } from './utils';
 
 const EVENT_END = 'end';
