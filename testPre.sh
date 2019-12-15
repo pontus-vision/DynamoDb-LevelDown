@@ -1,6 +1,10 @@
 #!/bin/bash
 
-if [ "$CI" == "true" ]; then echo "Testing under CI"; fi
+if [ "$CI" == "true" ]; then
+  echo "Testing under CI"
+  exit 0
+fi
+
 source ./testFuncs.sh
 
 readDockerImageState 'dynamo'

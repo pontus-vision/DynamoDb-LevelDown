@@ -6,6 +6,18 @@ jobs:
   build:
     docker:
       - image: circleci/node:12.13
+      - image: amazon/dynamodb-local:latest
+        user: dynamodblocal
+        command:
+          [
+            -Djava.library.path=./DynamoDBLocal_lib,
+            -jar,
+            DynamoDBLocal.jar,
+            -inMemory,
+            -port,
+            "4567",
+            -delayTransientStatuses,
+          ]
 
     working_directory: ~/repo
 
