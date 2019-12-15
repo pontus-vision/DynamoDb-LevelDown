@@ -1,6 +1,4 @@
 #!/bin/sh
-if [ "$CI" == "true" ]; then exit 0; fi
-
 source testFuncs.sh
 
 readDockerImageState 'dynamo'
