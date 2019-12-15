@@ -1,5 +1,4 @@
-#!/bin/sh
-source testFuncs.sh
+source ./testFuncs.sh
 
 readDockerImageState 'dynamo'
 case "$DYNAMO_STATUS" in

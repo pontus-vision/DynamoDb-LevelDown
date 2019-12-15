@@ -1,5 +1,5 @@
-#!/bin/sh
-source testFuncs.sh
+if [ "$CI" == "true" ]; then echo "Testing under CI"; fi
+source ./testFuncs.sh
 
 readDockerImageState 'dynamo'
 case "$DYNAMO_STATUS" in
