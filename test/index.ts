@@ -1,5 +1,6 @@
-import levelup, { LevelUp } from 'levelup';
 import test, { Test } from 'tape';
+import levelup, { LevelUp } from 'levelup';
+import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
 import { DynamoDbDownFactory } from '../dist/index';
@@ -14,11 +15,16 @@ const DynamoDbOptions: DynamoDB.ClientConfiguration = {
   paramValidation: false,
   endpoint: 'http://localhost:4567'
 };
+const dynamoDb = new DynamoDB(DynamoDbOptions);
+const dynamoDownFactory = DynamoDbDownFactory(dynamoDb);
 
 const leveldown = (location: string) => {
-  const dynamoDb = new DynamoDB(DynamoDbOptions);
-  const dynamoDown = DynamoDbDownFactory(dynamoDb)(location);
+  const dynamoDown = dynamoDownFactory(location);
   return dynamoDown;
+};
+
+const destroyer = (location: string, cb: ErrorCallback) => {
+  dynamoDownFactory.destroy(location, cb);
 };
 
 const createTestOptions = () => {
@@ -51,6 +57,42 @@ const createTestOptions = () => {
 /*
  * Run select `leveldown` tests
  */
+test('destroyer', t => {
+  t.test('setup', t => {
+    leveldown('tempbase');
+    t.end();
+  });
+
+  t.test('destroy without opening', t => {
+    destroyer('tempbase', e => {
+      t.notOk(e, 'no error');
+      t.end();
+    });
+  });
+
+  t.test('destroy without existing', t => {
+    destroyer('tempbase2', e => {
+      t.ok(e, 'got error');
+      t.equals((e || {}).message, 'NotFound', 'got NotFound error');
+      t.end();
+    });
+  });
+
+  t.test('destroy offline', t => {
+    const dbl = 'offlineBase';
+    const ddb = new DynamoDB({ ...DynamoDbOptions, endpoint: 'http://invalid:666' });
+    const ddf = DynamoDbDownFactory(ddb);
+    ddf(dbl);
+    ddf.destroy(dbl, e => {
+      t.ok(e, 'got error');
+      t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
+      t.end();
+    });
+  });
+
+  t.end();
+});
+
 test('leveldown', t => {
   let db: DynamoDbDown;
 
@@ -73,7 +115,7 @@ test('leveldown', t => {
     });
   });
 
-  t.test('tearDown', t => t.end());
+  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
 
   t.end();
 });
@@ -85,9 +127,7 @@ test('levelup', t => {
   let db: LevelUp<DynamoDbDown>;
 
   t.test('setup', t => {
-    const dynamoDb = new DynamoDB(DynamoDbOptions);
-    const dynamoDown = DynamoDbDownFactory(dynamoDb);
-    db = levelup(dynamoDown('foobase'));
+    db = levelup(dynamoDownFactory('foobase'));
     t.end();
   });
 
@@ -114,12 +154,10 @@ test('levelup', t => {
     });
   });
 
-  t.test('tearDown', t => t.end());
+  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
 
   t.test('setup', t => {
-    const dynamoDb = new DynamoDB(DynamoDbOptions);
-    const dynamoDown = DynamoDbDownFactory(dynamoDb);
-    db = levelup(dynamoDown('foobase'), { valueEncoding: 'json' });
+    db = levelup(dynamoDownFactory('foobase'), { valueEncoding: 'json' });
     t.end();
   });
 
@@ -146,7 +184,7 @@ test('levelup', t => {
     });
   });
 
-  t.test('tearDown', t => t.end());
+  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
 
   t.end();
 });
