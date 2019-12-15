@@ -12,7 +12,7 @@ const DynamoDbOptions: DynamoDB.ClientConfiguration = {
   accessKeyId: 'abc',
   secretAccessKey: '123',
   paramValidation: false,
-  endpoint: 'http://0.0.0.0:4567'
+  endpoint: 'http://localhost:4567'
 };
 
 const leveldown = (location: string) => {
