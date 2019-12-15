@@ -1,3 +1,5 @@
+#!/bin/bash
+
 DOCKER_PATH=$(which docker)
 if [ "$DOCKER_PATH" == "" ]; then
   echo "Cannot find docker" >&2
