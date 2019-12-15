@@ -5,8 +5,6 @@ jobs:
   build:
     docker:
       - image: circleci/node:12.13
-        environment:
-          DYNALITE: http://0.0.0.0:4567
 
     working_directory: ~/repo
 
@@ -29,20 +27,8 @@ jobs:
           key: v1-dependencies-{{ checksum "package.json" }}
 
       - run:
-          name: Run DynaLite Server
-          command: |
-            set +e
-            set +o pipefail
-            yarn dynalite || true
-          background: true
-
-      - run:
           name: Testing
           command: yarn test
-
-      - run:
-          name: Kill DynaLite Server
-          command: kill $(ps -ax | grep dynalite | grep -v grep | awk '{print $1}')
 
       - codecov/upload:
           file: build/coverage/lcov.info
