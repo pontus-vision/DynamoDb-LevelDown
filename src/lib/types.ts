@@ -30,7 +30,7 @@ export interface IteratorOptions extends AbstractIteratorOptions<any> {
 }
 
 export class Keys {
-  static readonly DATA_KEY = '---data';
-  static readonly HASH_KEY = '---hash';
-  static readonly RANGE_KEY = '---range';
+  static readonly DATA_KEY = 'data';
+  static readonly HASH_KEY = 'hash';
+  static readonly RANGE_KEY = 'range';
 }

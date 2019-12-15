@@ -6,11 +6,11 @@ export function cloneObject<T>(obj: T): T {
     return obj;
   }
 
-  const temp = (<Object>obj).constructor();
+  const temp = Object.create(<Object>obj);
   for (const key in obj) {
     temp[key] = cloneObject(obj[key]);
   }
-  return temp;
+  return <T>temp;
 }
 
 export async function maybeDelay(ms?: number): Promise<void> {
@@ -22,12 +22,16 @@ export async function maybeDelay(ms?: number): Promise<void> {
 export function withoutKeys<T extends DynamoDB.ItemCollectionKeyAttributeMap>(item: T): T {
   if (!item) return item;
 
-  const newItem = cloneObject(item);
+  const newItem = <any>cloneObject(item);
+  const delProps = [Keys.HASH_KEY, Keys.RANGE_KEY];
   if (isPlainObject(newItem)) {
-    Reflect.deleteProperty(newItem, Keys.HASH_KEY);
-    Reflect.deleteProperty(newItem, Keys.RANGE_KEY);
+    Reflect.setPrototypeOf(newItem, null);
+    delProps.forEach(k => {
+      Reflect.set(newItem, k, undefined);
+      Reflect.deleteProperty(newItem, k);
+    });
   }
-  return newItem;
+  return <T>newItem;
 }
 
 export function keyConditionsFor(hashKey: string, rangeCondition: DynamoDB.Condition): DynamoDB.KeyConditions {
@@ -128,12 +132,20 @@ export function hexEncodeString(str: string): string {
   return hex;
 }
 
-export function castToBuffer(object: Buffer | typeof Array | string | boolean | number | null | undefined): Buffer {
+export function castToBuffer(object: Buffer | Array<any> | string | boolean | number | null | undefined): Buffer {
   if (object instanceof Buffer) return object;
   if (object instanceof Array) return Buffer.from(object);
   if (typeof object === 'string') return Buffer.from(object);
-  if (typeof object === 'boolean') return Buffer.from(String(object));
-  if (typeof object === 'number') return Buffer.from(String(object));
+  if (typeof object === 'boolean') {
+    const b = Buffer.alloc(1);
+    b.writeUInt8(object === true ? 1 : 0, 0);
+    return b;
+  }
+  if (typeof object === 'number') {
+    const b = Buffer.alloc(8);
+    b.writeFloatBE(object, 0);
+    return b;
+  }
   if (object === null || object === undefined) return Buffer.alloc(0);
 
   throw new Error('The object is not supported for conversion to buffer');
