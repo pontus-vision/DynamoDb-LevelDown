@@ -34,8 +34,8 @@ export class DynamoDbAsync {
     private dynamoDb: DynamoDB,
     private tableName: string,
     private hashKey: string,
-    private useConsistency: boolean = false,
-    private billingMode: DynamoBillingMode = 'PAY_PER_REQUEST'
+    private useConsistency: boolean,
+    private billingMode: DynamoBillingMode
   ) {
     this.queryAsync = promisify(this.dynamoDb.query).bind(this.dynamoDb);
     // @ts-ignore - Possible override detection issue with AWS types
@@ -99,7 +99,7 @@ export class DynamoDbAsync {
     array.forEach(item => {
       if (opKeys[item.key]) {
         const idx = ops.findIndex(someItem => rangeKeyFrom(someItem) === item.key);
-        if (idx !== -1) ops.splice(idx, 1); // De-dupe
+        ops.splice(idx, 1); // De-dupe
       }
 
       opKeys[item.key] = true;
@@ -110,19 +110,13 @@ export class DynamoDbAsync {
       );
     });
 
-    const requests: DynamoDB.WriteRequests = [];
     const params: DynamoDB.Types.BatchWriteItemInput = { RequestItems: {} };
-
-    let response: DynamoDB.Types.BatchWriteItemOutput | undefined = undefined;
     while (ops.length > 0) {
+      params.RequestItems[this.tableName] = ops.splice(0, MAX_BATCH_SIZE);
+      const response = await this.batchWriteItemAsync(params);
       if (response && response.UnprocessedItems && response.UnprocessedItems[this.tableName]) {
-        requests.push(...response.UnprocessedItems[this.tableName]);
+        ops.unshift(...response.UnprocessedItems[this.tableName]);
       }
-      requests.push(...ops.splice(0, MAX_BATCH_SIZE - requests.length));
-      if (requests.length === 0) return;
-
-      params.RequestItems[this.tableName] = requests.splice(0);
-      response = await this.batchWriteItemAsync(params);
     }
   }
 
@@ -160,7 +154,7 @@ export class DynamoDbAsync {
         { AttributeName: Keys.RANGE_KEY, KeyType: 'RANGE' }
       ],
       BillingMode: this.billingMode,
-      ProvisionedThroughput: this.billingMode == 'PROVISIONED' ? throughput : undefined
+      ProvisionedThroughput: this.billingMode == DynamoBillingMode.PROVISIONED ? throughput : undefined
     });
     await this.waitForAsync('tableExists', {
       TableName: this.tableName,

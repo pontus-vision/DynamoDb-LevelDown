@@ -1,5 +1,6 @@
 import { DynamoDB } from 'aws-sdk';
 import { IteratorOptions, Keys } from './types';
+import fs from 'fs';
 
 export function cloneObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
@@ -132,7 +133,9 @@ export function hexEncodeString(str: string): string {
   return hex;
 }
 
-export function castToBuffer(object: Buffer | Array<any> | string | boolean | number | null | undefined): Buffer {
+export function castToBuffer(
+  object: Buffer | Array<any> | string | boolean | number | null | undefined | object
+): Buffer {
   if (object instanceof Buffer) return object;
   if (object instanceof Array) return Buffer.from(object);
   if (typeof object === 'string') return Buffer.from(object);
@@ -146,6 +149,7 @@ export function castToBuffer(object: Buffer | Array<any> | string | boolean | nu
     b.writeFloatBE(object, 0);
     return b;
   }
+  if (isPlainObject(object)) return Buffer.from(JSON.stringify(object));
   if (object === null || object === undefined) return Buffer.alloc(0);
 
   throw new Error('The object is not supported for conversion to buffer');
@@ -158,13 +162,13 @@ export function isPlainObject(object: any): boolean {
 export function serialize(value: any) {
   const transformer = TRANSFORMERS.find(transformer => transformer.for(value));
   if (!!transformer) return transformer.toDb(value);
-  throw new Error(`Serialization not available for ${typeof value}`);
+  throw new Error(`Serialization not available for '${typeof value}'`);
 }
 
 export function deserialize(value: any) {
   const transformer = TRANSFORMERS.find(transformer => transformer.for(value));
   if (!!transformer) return transformer.fromDb(value);
-  throw new Error(`Deserialization not available for ${typeof value}`);
+  throw new Error(`Deserialization not available for '${typeof value}'`);
 }
 
 const toBase64 = (value: string) => Buffer.from(value).toString('base64');
@@ -173,18 +177,14 @@ const ctorName = (value: Object) => value.constructor.name;
 const transformReduceFrom = (value: any) => {
   const acc: any = {};
   for (const key in value) {
-    if (Reflect.has(value, key)) {
-      acc[key] = deserialize(value[key]);
-    }
+    acc[key] = deserialize(value[key]);
   }
   return acc;
 };
 const transformReduceTo = (value: any) => {
   const acc: any = {};
   for (const key in value) {
-    if (Reflect.has(value, key)) {
-      acc[key] = serialize(value[key]);
-    }
+    acc[key] = serialize(value[key]);
   }
   return acc;
 };
@@ -204,23 +204,31 @@ const TRANSFORMER_SPECIALS = {
   EmptyString: toBase64('EMPTY_STRING'),
   EmptyBuffer: toBase64('EMPTY_BUFFER')
 };
-const TRANSFORMER_SPECIALS_VALUES = Object.values(TRANSFORMER_SPECIALS);
 const TRANSFORMERS = [
   {
     for: (value: any) => value === null || value === undefined || dbotName(value) === 'NULL',
     toDb: () => ({ NULL: true }),
     fromDb: () => undefined
   },
-  { for: (value: any) => Number.isNaN(value), toDb: () => ({ B: TRANSFORMER_SPECIALS.NaN }), fromDb: () => Number.NaN },
   {
-    for: (value: any) => String(value).trim() === '',
-    toDb: () => ({ B: TRANSFORMER_SPECIALS.EmptyString }),
-    fromDb: () => ''
+    for: (value: any) =>
+      Number.isNaN(value) || (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.NaN),
+    toDb: () => ({ B: TRANSFORMER_SPECIALS.NaN }),
+    fromDb: () => Number.NaN
   },
   {
-    for: (value: any) => !!value && isBuffer(value) && value.length === 0,
+    for: (value: any) =>
+      (isBuffer(value) && value.length === 0) ||
+      (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.EmptyBuffer),
     toDb: () => ({ B: TRANSFORMER_SPECIALS.EmptyBuffer }),
     fromDb: () => Buffer.alloc(0)
+  },
+  {
+    for: (value: any) =>
+      (ctorName(value) === 'String' && value.trim() === '') ||
+      (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.EmptyString),
+    toDb: () => ({ B: TRANSFORMER_SPECIALS.EmptyString }),
+    fromDb: () => ''
   },
   {
     for: (value: any) => ctorName(value) === 'String' || dbotName(value) === 'S',
@@ -240,21 +248,7 @@ const TRANSFORMERS = [
   {
     for: (value: any) => isBuffer(value) || ctorName(value) === 'Buffer' || dbotName(value) === 'B',
     toDb: (value: any) => ({ B: value }),
-    fromDb: (value: any) => {
-      const buffer = Buffer.from(value.B);
-      const bufferString = String(buffer);
-      const specialKey = TRANSFORMER_SPECIALS_VALUES.find(v => bufferString === v) || undefined;
-      switch (specialKey) {
-        case TRANSFORMER_SPECIALS.NaN:
-          return Number.NaN;
-        case TRANSFORMER_SPECIALS.EmptyString:
-          return '';
-        case TRANSFORMER_SPECIALS.EmptyBuffer:
-          return Buffer.alloc(0);
-        default:
-          return buffer;
-      }
-    }
+    fromDb: (value: any) => Buffer.from(value.B)
   },
   {
     for: (value: any) => ctorName(value) === 'Array' || dbotName(value) === 'L',
@@ -265,14 +259,5 @@ const TRANSFORMERS = [
     for: (value: any) => ctorName(value) === 'Object' || dbotName(value) === 'M',
     toDb: (value: any) => ({ M: transformReduceTo(value) }),
     fromDb: (value: any) => transformReduceFrom(value.M)
-  },
-  {
-    for: () => true,
-    toDb: (value: any) => {
-      throw new Error(`Cannot serialize ${typeof value} value`);
-    },
-    fromDb: (value: any) => {
-      throw new Error(`Cannot deserialize ${typeof value} value`);
-    }
   }
 ];

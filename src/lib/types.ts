@@ -2,7 +2,10 @@ import { DynamoDB } from 'aws-sdk';
 import { AbstractIteratorOptions } from 'abstract-leveldown';
 
 export type LevelKey = string;
-export type DynamoBillingMode = 'PROVISIONED' | 'PAY_PER_REQUEST' | string;
+export enum DynamoBillingMode {
+  'PROVISIONED' = 'PROVISIONED',
+  'PAY_PER_REQUEST' = 'PAY_PER_REQUEST'
+}
 
 export interface DynamoDbDownOptions {
   useConsistency?: boolean;

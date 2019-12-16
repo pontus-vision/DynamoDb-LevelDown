@@ -1,10 +1,11 @@
 import test, { Test } from 'tape';
 import levelup, { LevelUp } from 'levelup';
-import { ErrorCallback } from 'abstract-leveldown';
+import { ErrorCallback, AbstractBatch } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
 import { DynamoDbDownFactory } from '../dist/index';
 import { DynamoDbDown } from '../dist/lib/dynamoDbDown';
+import { DynamoBillingMode } from '../dist/lib/types';
 
 const suite = require('abstract-leveldown/test');
 
@@ -93,11 +94,24 @@ test('destroyer', t => {
   t.end();
 });
 
+test('factory options', t => {
+  t.test('default provisioning', t => {
+    const dynamoDown = DynamoDbDownFactory(dynamoDb, { billingMode: DynamoBillingMode.PROVISIONED });
+    const db = dynamoDown('fake_news');
+    db.open(e => {
+      t.notOk(e, 'creates/opens with default provisioning');
+      t.end();
+    });
+  });
+
+  t.end();
+});
+
 test('leveldown', t => {
   let db: DynamoDbDown;
 
   t.test('setup', t => {
-    db = leveldown('foobase');
+    db = leveldown('foobase42');
     t.end();
   });
 
@@ -106,16 +120,16 @@ test('leveldown', t => {
       ReadCapacityUnits: 5,
       WriteCapacityUnits: 5
     };
-    db.open({ dynamoOptions: { ProvisionedThroughput } }, function(err) {
-      t.notOk(err);
-      db.close(function(err) {
-        t.notOk(err);
+    db.open({ dynamoOptions: { ProvisionedThroughput } }, e => {
+      t.notOk(e);
+      db.close(e => {
+        t.notOk(e);
         t.end();
       });
     });
   });
 
-  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
+  t.test('tearDown', t => destroyer('foobase42', e => t.end(e)));
 
   t.end();
 });

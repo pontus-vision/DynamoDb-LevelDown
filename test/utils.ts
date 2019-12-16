@@ -7,7 +7,9 @@ import {
   serialize,
   rangeKeyFrom,
   hexEncodeString,
-  castToBuffer
+  castToBuffer,
+  isBuffer,
+  deserialize
 } from '../dist/lib/utils';
 
 /*
@@ -150,7 +152,7 @@ test('utility tests', t => {
   });
 
   t.test('buffer casting', t => {
-    t.throws(() => castToBuffer(<any>{ foo: 'bar' }), /.*not supported.*/, 'throws correct error when unsupported');
+    t.throws(() => castToBuffer(<any>(() => {})), /.*not supported.*/, 'throws correct error when unsupported');
 
     t.test('null || undefined => Buffer(empty)', t => {
       let output: Buffer | null = null;
@@ -210,10 +212,92 @@ test('utility tests', t => {
     });
 
     t.test('Boolean => Buffer', t => {
-      const input = true;
+      [true, false].forEach(v => {
+        const input = v;
+        const output = castToBuffer(input);
+        t.ok(output, 'got buffer from boolean');
+        t.looseEqual(output.readUInt8(0), input, 'buffer is expected boolean');
+      });
+      t.end();
+    });
+
+    t.test('Object => Buffer', t => {
+      const input = { iam: 'a teapot', short: 'and stout', here: 'is my handle', stamped: 42, alive: true };
       const output = castToBuffer(input);
-      t.ok(output, 'got buffer from boolean');
-      t.looseEqual(output.readUInt8(0), input, 'buffer is expected boolean');
+      t.ok(output, 'got buffer from object');
+      t.deepEqual(JSON.parse(String(output)), input, 'buffer is expected number');
+
+      t.end();
+    });
+
+    t.end();
+  });
+
+  t.test('buffer detection', t => {
+    t.test('primitives are not buffers', t => {
+      [666, true, 'foo', new Date()].forEach(v => t.notOk(isBuffer(v), `'${typeof v}' is not a buffer`));
+      t.end();
+    });
+
+    t.ok(isBuffer(Buffer.alloc(0)), 'empty buffer is a buffer');
+    t.ok(isBuffer({ type: 'Buffer', data: [0] }), 'buffer-like is a buffer');
+
+    t.end();
+  });
+
+  t.test('edge serialization', t => {
+    const func = function(foo: any) {
+      return foo;
+    };
+
+    t.test('cannot serialize function', t => {
+      try {
+        const result = serialize(func);
+        t.notOk(result, 'function serialized');
+      } catch (e) {
+        t.ok(e, 'function not serialized');
+        t.true(/.*serialization not available.*/i.test(e.message), 'correct error message');
+      } finally {
+        t.end();
+      }
+    });
+
+    t.test('cannot deserialize function', t => {
+      try {
+        const result = deserialize(func);
+        t.notOk(result, 'function serialized');
+      } catch (e) {
+        t.ok(e, 'function not serialized');
+        t.true(/.*serialization not available.*/i.test(e.message), 'correct error message');
+      } finally {
+        t.end();
+      }
+    });
+
+    t.test('handles empty buffers', t => {
+      const original = Buffer.alloc(0);
+      const serializedBuffer = serialize(original);
+      const deserializedBuffer = deserialize(serializedBuffer);
+      t.comment(`Buffer(0) => ${JSON.stringify(serializedBuffer)}`);
+      t.looseEqual(deserializedBuffer, original, 'deserialized empty buffer');
+
+      t.end();
+    });
+
+    t.test('handles null', t => {
+      const input = null;
+      const serialized = serialize(input);
+      const deserialized = deserialize(serialized);
+      t.notOk(deserialized, 'give null, get undefined');
+
+      t.end();
+    });
+
+    t.test('handles undefined', t => {
+      const input = undefined;
+      const serialized = serialize(input);
+      const deserialized = deserialize(serialized);
+      t.notOk(deserialized, 'give undefined, get undefined');
 
       t.end();
     });

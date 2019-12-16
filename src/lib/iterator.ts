@@ -35,7 +35,7 @@ export class DynamoDbIterator extends AbstractIterator {
     db: DynamoDbDown,
     private dynamoDb: DynamoDbAsync,
     private hashKey: string,
-    private options?: IteratorOptions
+    private options: IteratorOptions
   ) {
     super(db);
 
@@ -105,7 +105,6 @@ export class DynamoDbIterator extends AbstractIterator {
       resolve(undefined);
     };
     const next = await new Promise<SimpleItem>((resolve, reject) => {
-      if (this.endEmitted) return resolve();
       const next = this.readStream();
       if (next) {
         this.results.unshift(next);
@@ -118,13 +117,12 @@ export class DynamoDbIterator extends AbstractIterator {
     return (next || {}).key;
   }
 
-  private readStream(): SimpleItem | undefined {
-    if (!this.results) throw new Error('Cannot read from an undefined stream');
+  private readStream(): SimpleItem {
     return this.results.read() as SimpleItem;
   }
 
   private getOptionsRange() {
-    const options = this.options || {};
+    const options = this.options;
     const reversed = options.reverse === true;
     const start = reversed ? options.end : options.start;
     const end = reversed ? options.start : options.end;
@@ -154,7 +152,7 @@ export class DynamoDbIterator extends AbstractIterator {
 
     let nextKey, couldBeHere;
     const seekKey = this.seekTarget;
-    const isReverse = this.options && this.options.reverse === true;
+    const isReverse = this.options.reverse === true;
     do {
       nextKey = await this.peekNextKey();
       if (!nextKey) return;
@@ -165,11 +163,11 @@ export class DynamoDbIterator extends AbstractIterator {
     this.seekTarget = undefined;
   }
 
-  private createReadStream(opts: IteratorOptions = {}): Transform {
+  private createReadStream(opts: IteratorOptions): Transform {
     let returnCount = 0;
 
     const isFinished = () => {
-      return opts.limit && opts.limit > 0 && returnCount > opts.limit;
+      return !!opts.limit && opts.limit > 0 && returnCount > opts.limit;
     };
 
     const pushNext = (stream: Transform, output: SimpleItem) => {
@@ -253,8 +251,7 @@ export class DynamoDbIterator extends AbstractIterator {
 
     try {
       const records = await this.dynamoDb.query(params);
-      if (!records || !records.Items) throw new Error('Items not found');
-      records.Items.forEach(item => (item.value = dataFromItem(item)));
+      records.Items?.forEach(item => (item.value = dataFromItem(item)));
       cb(undefined, records);
     } catch (err) {
       cb(err);

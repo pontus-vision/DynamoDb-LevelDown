@@ -13,8 +13,8 @@ import {
 
 import { DynamoDbIterator } from './iterator';
 import { DynamoDbAsync } from './dynamoDbAsync';
-import { DynamoDbDownOptions } from './types';
-import { isBuffer, maybeDelay } from './utils';
+import { DynamoDbDownOptions, DynamoBillingMode } from './types';
+import { isBuffer } from './utils';
 
 export class DynamoDbDown extends AbstractLevelDOWN {
   private hashKey: string;
@@ -24,17 +24,18 @@ export class DynamoDbDown extends AbstractLevelDOWN {
   constructor(private dynamoDb: DynamoDB, location: string, options?: DynamoDbDownOptions) {
     super(location);
 
+    const billingMode = options?.billingMode || DynamoBillingMode.PAY_PER_REQUEST;
     const useConsistency = options?.useConsistency || false;
     const tableHash = location.split('$');
 
     this.tableName = tableHash[0];
     this.hashKey = tableHash[1] || '!';
     this.dynamoDb = dynamoDb;
-    this.dynamoDbAsync = new DynamoDbAsync(this.dynamoDb, this.tableName, this.hashKey, useConsistency);
+    this.dynamoDbAsync = new DynamoDbAsync(this.dynamoDb, this.tableName, this.hashKey, useConsistency, billingMode);
   }
 
   async _close(cb: ErrorCallback) {
-    if (cb) cb(undefined);
+    cb(undefined);
   }
 
   async _open(options: AbstractOpenOptions, cb: ErrorCallback) {
@@ -97,7 +98,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
     }
   }
 
-  _iterator(options?: AbstractIteratorOptions<any>): AbstractIterator<any, any> {
+  _iterator(options: AbstractIteratorOptions<any>): AbstractIterator<any, any> {
     return new DynamoDbIterator(this, this.dynamoDbAsync, this.hashKey, options);
   }
 
