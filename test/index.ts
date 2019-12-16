@@ -1,6 +1,6 @@
 import test, { Test } from 'tape';
 import levelup, { LevelUp } from 'levelup';
-import { ErrorCallback, AbstractBatch } from 'abstract-leveldown';
+import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
 import { DynamoDbDownFactory } from '../dist/index';
@@ -56,6 +56,23 @@ const createTestOptions = () => {
 };
 
 /*
+ * Long-running offline tests
+ */
+test('offline long-running tests', t => {
+  t.test('destroy offline', t => {
+    const dbl = 'offlineBase';
+    const ddb = new DynamoDB({ ...DynamoDbOptions, endpoint: 'http://invalid:666' });
+    const ddf = DynamoDbDownFactory(ddb);
+    ddf(dbl);
+    ddf.destroy(dbl, e => {
+      t.ok(e, 'got error');
+      t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
+      t.end();
+    });
+  });
+});
+
+/*
  * Run select `leveldown` tests
  */
 test('destroyer', t => {
@@ -75,18 +92,6 @@ test('destroyer', t => {
     destroyer('tempbase2', e => {
       t.ok(e, 'got error');
       t.equals((e || {}).message, 'NotFound', 'got NotFound error');
-      t.end();
-    });
-  });
-
-  t.test('destroy offline', t => {
-    const dbl = 'offlineBase';
-    const ddb = new DynamoDB({ ...DynamoDbOptions, endpoint: 'http://invalid:666' });
-    const ddf = DynamoDbDownFactory(ddb);
-    ddf(dbl);
-    ddf.destroy(dbl, e => {
-      t.ok(e, 'got error');
-      t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
       t.end();
     });
   });
@@ -129,9 +134,107 @@ test('leveldown', t => {
     });
   });
 
+  t.test('batch and iterate objects', t => {
+    db.open(e => {
+      t.notOk(e);
+
+      const valueObject = { short: 'a and stout' };
+      db.batch(
+        [
+          { type: 'put', key: 'foo', value: { iam: 'a little teapot' } },
+          { type: 'put', key: 'bar', value: valueObject }
+        ],
+        e => {
+          t.notOk(e);
+
+          const iterator = db.iterator({ keyAsBuffer: false, valueAsBuffer: false });
+          iterator.next((e, k, v) => {
+            t.notOk(e);
+            t.ok(k, 'got object key');
+            t.equal(k, 'bar', 'got same object key');
+            t.ok(v, 'got object value');
+            t.deepEqual(v, valueObject, 'got same object value');
+
+            db.close(e => {
+              t.notOk(e);
+              t.end();
+            });
+          });
+        }
+      );
+    });
+  });
+
+  t.test('underlying errors', t => {
+    db.open(e => {
+      t.notOk(e);
+
+      const anyDb = db as any;
+      anyDb.dynamoDbAsync.put = async () => {
+        throw new Error('Forced Put Error');
+      };
+      anyDb.dynamoDbAsync.delete = async () => {
+        throw new Error('Forced Delete Error');
+      };
+      anyDb.dynamoDbAsync.batch = async () => {
+        throw new Error('Forced Batch Error');
+      };
+
+      db.put('foo', 'bar', e => {
+        t.ok(e);
+        db.del('foo', e => {
+          t.ok(e);
+          db.batch([{ type: 'put', key: 'foo', value: 'bar' }], e => {
+            t.ok(e);
+            db.close(e => {
+              t.notOk(e);
+              t.end();
+            });
+          });
+        });
+      });
+    });
+  });
+
   t.test('tearDown', t => destroyer('foobase42', e => t.end(e)));
 
   t.end();
+});
+
+test('really deep error handling', t => {
+  const db = leveldown('foobase42');
+  db.open(e => {
+    t.notOk(e);
+
+    let callCount = 0;
+    const anyDb = db as any;
+    anyDb.dynamoDbAsync.batchWriteItemAsync = async (params: any) => {
+      callCount++;
+      if (callCount === 1) {
+        const tableName = Object.keys(params.RequestItems).shift() as string;
+        return {
+          UnprocessedItems: {
+            [tableName]: params.RequestItems[tableName]
+          }
+        };
+      } else return {};
+    };
+
+    db.batch(
+      [
+        { type: 'put', key: 'foo', value: 'bar' },
+        { type: 'put', key: 'fiz', value: 'gig' }
+      ],
+      e => {
+        t.notOk(e);
+        db.close(e => {
+          t.notOk(e);
+          t.equal(callCount, 2, 'unprocessed items retried');
+          t.end();
+        });
+      }
+    );
+  });
 });
 
 /*

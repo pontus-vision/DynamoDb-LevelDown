@@ -18,7 +18,7 @@
     "strictFunctionTypes": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": true,
+    "strictPropertyInitialization": true
   },
   "compileOnSave": true,
   "include": [

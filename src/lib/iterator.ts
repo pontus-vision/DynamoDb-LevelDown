@@ -76,12 +76,7 @@ export class DynamoDbIterator extends AbstractIterator {
     } else {
       let key: any = streamObject.key;
       let value: any = streamObject.value;
-      if (this.valueAsBuffer === false) {
-        value = isPlainObject(value) ? JSON.stringify(value) : value.toString();
-      }
-      if (this.keyAsBuffer === false) {
-        key = key.toString();
-      }
+
       // FIXME: This could be better.
       key = this.keyAsBuffer ? castToBuffer(key) : key;
       value = this.valueAsBuffer ? castToBuffer(value) : value;
