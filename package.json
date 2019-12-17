@@ -31,6 +31,7 @@
     "node": ">=8"
   },
   "dependencies": {
+    "aws-sdk": "^2.589.0",
     "abstract-leveldown": "^6.2.2",
     "level-supports": "^1.0.1",
     "through2": "^3.0.1"
@@ -41,7 +42,6 @@
     "@types/levelup": "^4.3.0",
     "@types/tape": "^4.2.33",
     "@types/through2": "^2.0.34",
-    "aws-sdk": "^2.589.0",
     "faucet": "^0.0.1",
     "levelup": "^4.3.2",
     "nyc": "^14.1.1",
