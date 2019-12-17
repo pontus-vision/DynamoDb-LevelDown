@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "abstract-leveldown": "^6.2.2",
+    "level-supports": "^1.0.1",
     "through2": "^3.0.1"
   },
   "devDependencies": {

@@ -7,7 +7,8 @@ import { DynamoDbDown } from '../dist/lib/dynamoDbDown';
 import { DynamoBillingMode } from '../dist/lib/types';
 import { DynamoDbDownFactory } from '../dist/index';
 
-const suite = require('abstract-leveldown/test');
+const suiteLevelSupports = require('level-supports/test');
+const suiteLevelDown = require('abstract-leveldown/test');
 
 const DynamoDbOptions: DynamoDB.ClientConfiguration = {
   region: 'us-east-1',
@@ -35,14 +36,6 @@ const createTestOptions = () => {
   const lastLocation = () => `test-table${dbIdx}`;
   const setUp = (t: Test) => t.end();
   const tearDown = (t: Test) => t.end();
-  const dbSupportTestOptions = {
-    bufferKeys: true,
-    clear: false,
-    createIfMissing: true,
-    errorIfExists: true,
-    seek: true,
-    snapshots: true
-  };
   return {
     location,
     lastLocation,
@@ -50,8 +43,7 @@ const createTestOptions = () => {
     setUp,
     tearDown,
     factory,
-    test,
-    ...dbSupportTestOptions
+    test
   };
 };
 
@@ -341,4 +333,5 @@ test('levelup', t => {
  */
 const options = createTestOptions();
 // require('abstract-leveldown/test/clear-test').all(options.test, options);
-suite(options);
+suiteLevelSupports(test, options);
+suiteLevelDown(options);

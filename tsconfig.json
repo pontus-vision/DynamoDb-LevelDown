@@ -18,7 +18,10 @@
     "strictFunctionTypes": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": true
+    "strictPropertyInitialization": true,
+    "types": [
+      "./types/level-supports"
+    ]
   },
   "compileOnSave": true,
   "include": [

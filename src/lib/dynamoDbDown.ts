@@ -10,11 +10,34 @@ import {
   AbstractIteratorOptions,
   AbstractIterator
 } from 'abstract-leveldown';
+import supports, { SupportManifest } from 'level-supports';
 
 import { DynamoDbIterator } from './iterator';
 import { DynamoDbAsync } from './dynamoDbAsync';
 import { DynamoDbDownOptions, DynamoBillingMode } from './types';
 import { isBuffer } from './utils';
+
+const manifest: SupportManifest = {
+  bufferKeys: true,
+  snapshots: true,
+  permanence: true,
+  seek: true,
+  clear: true,
+
+  // Features of abstract-leveldown that levelup doesn't have
+  status: true,
+
+  // Features of disk-based implementations
+  createIfMissing: true,
+  errorIfExists: true,
+
+  // Features of level(up) that abstract-leveldown doesn't have yet
+  deferredOpen: true,
+  openCallback: true,
+  promises: true,
+  streams: true,
+  encodings: true
+};
 
 export class DynamoDbDown extends AbstractLevelDOWN {
   private hashKey: string;
@@ -33,6 +56,8 @@ export class DynamoDbDown extends AbstractLevelDOWN {
     this.dynamoDb = dynamoDb;
     this.dynamoDbAsync = new DynamoDbAsync(this.dynamoDb, this.tableName, this.hashKey, useConsistency, billingMode);
   }
+
+  readonly supports = supports(manifest);
 
   async _close(cb: ErrorCallback) {
     cb(undefined);
