@@ -27,6 +27,9 @@
     "leveldown",
     "pouchdb"
   ],
+  "engines": {
+    "node": ">=8"
+  },
   "dependencies": {
     "abstract-leveldown": "^6.2.2",
     "through2": "^3.0.1"
