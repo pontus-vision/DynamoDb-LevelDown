@@ -17,6 +17,22 @@ import { DynamoDbAsync } from './dynamoDbAsync';
 import { DynamoDbDownOptions, DynamoBillingMode } from './types';
 import { isBuffer } from './utils';
 
+const manifest: SupportManifest = {
+  bufferKeys: true,
+  snapshots: true,
+  permanence: true,
+  seek: true,
+  clear: true,
+  status: true,
+  createIfMissing: true,
+  errorIfExists: true,
+  deferredOpen: true,
+  openCallback: true,
+  promises: true,
+  streams: true,
+  encodings: true
+};
+
 export class DynamoDbDown extends AbstractLevelDOWN {
   private hashKey: string;
   private tableName: string;

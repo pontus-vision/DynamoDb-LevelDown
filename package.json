@@ -73,6 +73,10 @@
               "release": "minor"
             },
             {
+              "type": "level",
+              "release": "minor"
+            },
+            {
               "type": "style",
               "release": "patch"
             }
