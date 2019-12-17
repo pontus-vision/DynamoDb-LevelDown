@@ -3,9 +3,9 @@ import levelup, { LevelUp } from 'levelup';
 import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
-import { DynamoDbDownFactory } from '../dist/index';
 import { DynamoDbDown } from '../dist/lib/dynamoDbDown';
 import { DynamoBillingMode } from '../dist/lib/types';
+import { DynamoDbDownFactory } from '../dist/index';
 
 const suite = require('abstract-leveldown/test');
 
@@ -169,6 +169,7 @@ test('leveldown', t => {
     db.open(e => {
       t.notOk(e);
 
+      let callCount = 0;
       const anyDb = db as any;
       anyDb.dynamoDbAsync.put = async () => {
         throw new Error('Forced Put Error');
@@ -179,16 +180,45 @@ test('leveldown', t => {
       anyDb.dynamoDbAsync.batch = async () => {
         throw new Error('Forced Batch Error');
       };
+      const oldQuery = anyDb.dynamoDbAsync.query;
+      anyDb.dynamoDbAsync.query = async (params: any) => {
+        callCount++;
+        switch (callCount) {
+          case 1:
+            return { Items: undefined };
+          case 2:
+            throw Object.assign(new Error('ResourceNotFoundException'), { code: 'ResourceNotFoundException' });
+          case 3:
+            throw new Error('Forced Query Error');
+          default:
+            return oldQuery(params);
+        }
+      };
 
       db.put('foo', 'bar', e => {
-        t.ok(e);
+        t.ok(e, 'put handles error');
         db.del('foo', e => {
-          t.ok(e);
+          t.ok(e, 'del handles error');
           db.batch([{ type: 'put', key: 'foo', value: 'bar' }], e => {
-            t.ok(e);
-            db.close(e => {
-              t.notOk(e);
-              t.end();
+            t.ok(e, 'batch handles error');
+            db.iterator().next(e => {
+              t.notOk(e, 'iterator handles `undefined` items');
+              db.iterator().next(e => {
+                t.notOk(e, 'iterator handles `ResourceNotFoundException`');
+                db.iterator().next(e => {
+                  t.ok(e, 'iterator handles general error');
+                  db.iterator({ gte: 5, lte: 2, reverse: false }).next((e, k, v) => {
+                    t.notOk(e, 'iterator handles general error');
+                    t.notOk(k, 'does not yield a key');
+                    t.notOk(k, 'does not yield a value');
+
+                    db.close(e => {
+                      t.notOk(e);
+                      t.end();
+                    });
+                  });
+                });
+              });
             });
           });
         });

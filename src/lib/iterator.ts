@@ -3,19 +3,17 @@ import { DynamoDB } from 'aws-sdk';
 import { Transform } from 'stream';
 import { AbstractIterator, ErrorKeyValueCallback } from 'abstract-leveldown';
 
-import { IteratorOptions, SimpleItem } from './types';
 import { DynamoDbDown } from './dynamoDbDown';
 import { DynamoDbAsync } from './dynamoDbAsync';
+import { IteratorOptions, SimpleItem } from './types';
 import {
-  isPlainObject,
-  castToBuffer,
   isBuffer,
-  dataFromItem,
-  keyConditionsFor,
   withoutKeys,
+  castToBuffer,
+  dataFromItem,
   rangeKeyFrom,
-  createRangeKeyCondition,
-  maybeDelay
+  keyConditionsFor,
+  createRangeKeyCondition
 } from './utils';
 
 const EVENT_END = 'end';
@@ -60,17 +58,28 @@ export class DynamoDbIterator extends AbstractIterator {
       this._next(cb);
     };
 
+    const onError = (e: Error) => {
+      this.results.removeListener(EVENT_END, onEnd);
+      this.results.removeListener(EVENT_READABLE, onReadable);
+      cb(e, undefined, undefined);
+    };
+    this.results.once(EVENT_ERROR, onError);
+
     await this.maybeSeek();
-    if (this.isOutOfRange) return cb(undefined, undefined, undefined);
+    if (this.isOutOfRange) {
+      this.results.removeListener(EVENT_ERROR, onError);
+      return cb(undefined, undefined, undefined);
+    }
 
     const streamObject = this.readStream();
+    this.results.removeListener(EVENT_ERROR, onError);
 
     if (!streamObject) {
       if (this.endEmitted) {
         return cb(undefined, undefined, undefined);
       } else {
-        this.results.once(EVENT_READABLE, onReadable);
         this.results.once(EVENT_END, onEnd);
+        this.results.once(EVENT_READABLE, onReadable);
         return;
       }
     } else {
@@ -188,11 +197,9 @@ export class DynamoDbIterator extends AbstractIterator {
 
       data.Items.forEach(item => {
         const rangeKey = rangeKeyFrom(item);
-        if (!!rangeKey) {
-          const filtered = (opts.gt && !(rangeKey > opts.gt)) || (opts.lt && !(rangeKey < opts.lt));
-          if (!filtered) {
-            stream.write(item);
-          }
+        const filtered = (opts.gt && !(rangeKey > opts.gt)) || (opts.lt && !(rangeKey < opts.lt));
+        if (!filtered) {
+          stream.write(item);
         }
       });
 
