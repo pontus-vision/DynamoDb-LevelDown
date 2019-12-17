@@ -23,15 +23,9 @@ const manifest: SupportManifest = {
   permanence: true,
   seek: true,
   clear: true,
-
-  // Features of abstract-leveldown that levelup doesn't have
   status: true,
-
-  // Features of disk-based implementations
   createIfMissing: true,
   errorIfExists: true,
-
-  // Features of level(up) that abstract-leveldown doesn't have yet
   deferredOpen: true,
   openCallback: true,
   promises: true,
