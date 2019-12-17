@@ -1,5 +1,5 @@
 import { DynamoDB } from 'aws-sdk';
-import { IteratorOptions, Keys } from './types';
+import { IteratorOptions, Keys, ValueTransformer } from './types';
 import fs from 'fs';
 
 export function cloneObject<T>(obj: T): T {
@@ -64,62 +64,53 @@ export function rangeKeyFrom(item: any): string {
 export function createRangeKeyCondition(opts: IteratorOptions): DynamoDB.Types.Condition {
   const defaultStart = '\u0000';
   const defaultEnd = '\xff\xff\xff\xff\xff\xff\xff\xff';
+  let result: DynamoDB.Types.Condition;
 
   if (opts.gt && opts.lt) {
-    return {
+    result = {
       ComparisonOperator: 'BETWEEN',
       AttributeValueList: [{ S: opts.gt }, { S: opts.lt }]
     };
-  }
-
-  if (opts.lt) {
-    return {
+  } else if (opts.lt) {
+    result = {
       ComparisonOperator: 'LT',
       AttributeValueList: [{ S: opts.lt }]
     };
-  }
-
-  if (opts.gt) {
-    return {
+  } else if (opts.gt) {
+    result = {
       ComparisonOperator: 'GT',
       AttributeValueList: [{ S: opts.gt }]
     };
-  }
-
-  if (!opts.start && !opts.end) {
-    return {
+  } else if (!opts.start && !opts.end) {
+    result = {
       ComparisonOperator: 'BETWEEN',
       AttributeValueList: [{ S: defaultStart }, { S: defaultEnd }]
     };
-  }
-
-  if (!opts.end) {
+  } else if (!opts.end) {
     const op = opts.reverse ? 'LE' : 'GE';
-    return {
+    result = {
       ComparisonOperator: op,
       AttributeValueList: [{ S: opts.start }]
     };
-  }
-
-  if (!opts.start) {
+  } else if (!opts.start) {
     const op = opts.reverse ? 'GE' : 'LE';
-    return {
+    result = {
       ComparisonOperator: op,
       AttributeValueList: [{ S: opts.end }]
     };
-  }
-
-  if (opts.reverse) {
-    return {
+  } else if (opts.reverse) {
+    result = {
       ComparisonOperator: 'BETWEEN',
       AttributeValueList: [{ S: opts.end }, { S: opts.start }]
     };
+  } else {
+    result = {
+      ComparisonOperator: 'BETWEEN',
+      AttributeValueList: [{ S: opts.start }, { S: opts.end }]
+    };
   }
 
-  return {
-    ComparisonOperator: 'BETWEEN',
-    AttributeValueList: [{ S: opts.start }, { S: opts.end }]
-  };
+  return result;
 }
 
 export function isBuffer(object: any): boolean {
@@ -136,55 +127,44 @@ export function hexEncodeString(str: string): string {
 export function castToBuffer(
   object: Buffer | Array<any> | string | boolean | number | null | undefined | object
 ): Buffer {
-  if (object instanceof Buffer) return object;
-  if (object instanceof Array) return Buffer.from(object);
-  if (typeof object === 'string') return Buffer.from(object);
-  if (typeof object === 'boolean') {
+  let result: Buffer;
+  if (object instanceof Buffer) result = object;
+  else if (object instanceof Array) result = Buffer.from(object);
+  else if (typeof object === 'string') result = Buffer.from(object);
+  else if (typeof object === 'boolean') {
     const b = Buffer.alloc(1);
     b.writeUInt8(object === true ? 1 : 0, 0);
-    return b;
-  }
-  if (typeof object === 'number') {
+    result = b;
+  } else if (typeof object === 'number') {
     const b = Buffer.alloc(8);
     b.writeFloatBE(object, 0);
-    return b;
-  }
-  if (isPlainObject(object)) return Buffer.from(JSON.stringify(object));
-  if (object === null || object === undefined) return Buffer.alloc(0);
+    result = b;
+  } else if (isPlainObject(object)) result = Buffer.from(JSON.stringify(object));
+  else if (object === null || object === undefined) result = Buffer.alloc(0);
+  else throw new Error('The object is not supported for conversion to buffer');
 
-  throw new Error('The object is not supported for conversion to buffer');
+  return result;
 }
 
 export function isPlainObject(object: any): boolean {
   return typeof object === 'object' && object !== null && !Array.isArray(object) && !Buffer.isBuffer(object);
 }
 
-export function serialize(value: any) {
-  const transformer = TRANSFORMERS.find(transformer => transformer.for(value));
-  if (!!transformer) return transformer.toDb(value);
-  throw new Error(`Serialization not available for '${typeof value}'`);
-}
+export const serialize = (value: any) => getTransformerOrThrow(value).toDb(value);
+export const deserialize = (value: any) => getTransformerOrThrow(value).fromDb(value);
 
-export function deserialize(value: any) {
+const getTransformerOrThrow = (value: any): ValueTransformer => {
   const transformer = TRANSFORMERS.find(transformer => transformer.for(value));
-  if (!!transformer) return transformer.fromDb(value);
-  throw new Error(`Deserialization not available for '${typeof value}'`);
-}
-
+  if (!transformer) throw new Error(`Transformer not available for '${typeof value}'`);
+  return transformer;
+};
 const toBase64 = (value: string) => Buffer.from(value).toString('base64');
 const dbotName = (value: any) => Object.keys(value || {}).shift();
 const ctorName = (value: Object) => value.constructor.name;
-const transformReduceFrom = (value: any) => {
+const transformReduce = (value: any, transformer: (value: any) => any) => {
   const acc: any = {};
   for (const key in value) {
-    acc[key] = deserialize(value[key]);
-  }
-  return acc;
-};
-const transformReduceTo = (value: any) => {
-  const acc: any = {};
-  for (const key in value) {
-    acc[key] = serialize(value[key]);
+    acc[key] = transformer(value[key]);
   }
   return acc;
 };
@@ -204,7 +184,7 @@ const TRANSFORMER_SPECIALS = {
   EmptyString: toBase64('EMPTY_STRING'),
   EmptyBuffer: toBase64('EMPTY_BUFFER')
 };
-const TRANSFORMERS = [
+const TRANSFORMERS: ValueTransformer[] = [
   {
     for: (value: any) => value === null || value === undefined || dbotName(value) === 'NULL',
     toDb: () => ({ NULL: true }),
@@ -257,7 +237,7 @@ const TRANSFORMERS = [
   },
   {
     for: (value: any) => ctorName(value) === 'Object' || dbotName(value) === 'M',
-    toDb: (value: any) => ({ M: transformReduceTo(value) }),
-    fromDb: (value: any) => transformReduceFrom(value.M)
+    toDb: (value: any) => ({ M: transformReduce(value, serialize) }),
+    fromDb: (value: any) => transformReduce(value.M, deserialize)
   }
 ];

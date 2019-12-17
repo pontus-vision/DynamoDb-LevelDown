@@ -256,7 +256,7 @@ test('utility tests', t => {
         t.notOk(result, 'function serialized');
       } catch (e) {
         t.ok(e, 'function not serialized');
-        t.true(/.*serialization not available.*/i.test(e.message), 'correct error message');
+        t.true(/.*transformer not available.*/i.test(e.message), 'correct error message');
       } finally {
         t.end();
       }
@@ -268,7 +268,7 @@ test('utility tests', t => {
         t.notOk(result, 'function serialized');
       } catch (e) {
         t.ok(e, 'function not serialized');
-        t.true(/.*serialization not available.*/i.test(e.message), 'correct error message');
+        t.true(/.*transformer not available.*/i.test(e.message), 'correct error message');
       } finally {
         t.end();
       }

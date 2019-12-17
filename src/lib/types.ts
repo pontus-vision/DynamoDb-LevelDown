@@ -37,3 +37,9 @@ export class Keys {
   static readonly HASH_KEY = 'hash';
   static readonly RANGE_KEY = 'range';
 }
+
+export type ValueTransformer = {
+  for: (value: any) => boolean;
+  toDb: (value: any) => DynamoDB.AttributeValue;
+  fromDb: (value: DynamoDB.AttributeValue) => any;
+};
