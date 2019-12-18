@@ -15,8 +15,9 @@ const DynamoDbOptions: DynamoDB.ClientConfiguration = {
   accessKeyId: 'abc',
   secretAccessKey: '123',
   paramValidation: false,
-  endpoint: 'http://localhost:4567'
+  endpoint: `http://localhost:${process.env.DYNAMODB_PORT}`
 };
+
 const dynamoDb = new DynamoDB(DynamoDbOptions);
 const dynamoDownFactory = DynamoDbDownFactory(dynamoDb);
 
@@ -332,6 +333,5 @@ test('levelup', t => {
  *   Run all `abstract-leveldown` tests according to `dbSupportTestOptions`
  */
 const options = createTestOptions();
-// require('abstract-leveldown/test/clear-test').all(options.test, options);
 suiteLevelSupports(test, options);
 suiteLevelDown(options);

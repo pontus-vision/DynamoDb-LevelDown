@@ -1,9 +1,12 @@
 {
   "standard.enable": false,
   "cSpell.words": [
+    "Funcs",
     "dbot",
     "dynalite",
+    "esac",
     "leveldown",
+    "localstack",
     "posttest"
   ]
 }
