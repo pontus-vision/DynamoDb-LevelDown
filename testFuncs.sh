@@ -8,11 +8,26 @@ fi
 
 IFS=''
 
-function readDockerImageState() {
+function readDockerContainerState() {
   local data
   local name=$1
-  local prefix=$(printf '%s\n' "$1" | awk '{ print toupper($0) }')
+  local prefix=$(printf '%s\n' "$name" | awk '{ print toupper($0) }')
   read -ra data <<<$(docker container ls -a --filter name=$name --format='"{{.ID}}" "{{.Names}}" "{{.Status}}""' | awk '{print $1" "$2" "$3 "\""}')
+  command eval "local data=($data)"
+  if [ "$data" != "" ]; then
+    command eval "${prefix}_ID=\"${data[0]}\""
+    command eval "${prefix}_NAME=\"${data[1]}\""
+    local status=$(printf '%s\n' "${data[2]}" | awk '{ print tolower($0) }')
+    command eval "${prefix}_STATUS=\"${status}\""
+  fi
+}
+
+function findContainerState() {
+  local data
+  local name=$2
+  local ancestor=$1
+  local prefix=$(printf '%s\n' "$name" | awk '{ print toupper($0) }')
+  read -ra data <<<$(docker ps --filter "ancestor=$ancestor" --format='"{{.ID}}" "{{.Names}}" "{{.Status}}""' | awk '{print $1" "$2" "$3 "\""}')
   command eval "local data=($data)"
   if [ "$data" != "" ]; then
     command eval "${prefix}_ID=\"${data[0]}\""

@@ -2,9 +2,10 @@
 
 source ./testFuncs.sh
 
-readDockerImageState 'localstack'
 
 function startDockerContainers() {
+  readDockerContainerState 'localstack'
+
   if [ "$LOCALSTACK_NAME" == "" ]; then
     LOCALSTACK_NAME='localstack-level-dynamo'
   fi
@@ -31,7 +32,9 @@ function startDockerContainers() {
 
 if [ "$CI" == "true" ]; then
   echo "Testing under CI"
+  findContainerState 'localstack/localstack:latest' 'localstack'
 else
+  echo "NOT testing under CI"
   startDockerContainers
 fi
 
