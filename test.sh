@@ -2,7 +2,6 @@
 
 source ./testFuncs.sh
 
-
 function startDockerContainers() {
   readDockerContainerState 'localstack'
 
@@ -32,14 +31,14 @@ function startDockerContainers() {
 
 if [ "$CI" == "true" ]; then
   echo "Testing under CI"
-  findContainerState 'localstack/localstack:latest' 'localstack'
+  export S3_PORT=4572
+  export DYNAMODB_PORT=4569
 else
   echo "NOT testing under CI"
   startDockerContainers
+  export S3_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4572/tcp") 0).HostPort}}' $LOCALSTACK_ID)
+  export DYNAMODB_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4569/tcp") 0).HostPort}}' $LOCALSTACK_ID)
 fi
-
-export S3_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4572/tcp") 0).HostPort}}' $LOCALSTACK_ID)
-export DYNAMODB_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4569/tcp") 0).HostPort}}' $LOCALSTACK_ID)
 
 echo "S3 is at http://localhost:$S3_PORT"
 echo "DynamoDb is at http://localhost:$DYNAMODB_PORT"
