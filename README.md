@@ -90,7 +90,7 @@ If you are fine with sharing capacity units across multiple database instances o
 
 ## Table Creation
 
-If the table doesn't exist, `DynamoDbDown` will try to create a table. You can specify the read/write throughput. If not specified, it will default to `1/1`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
+If the table doesn't exist, `DynamoDbDown` will try to create a table. You can specify the read/write throughput. If not specified, it will default to `5/5`. If the table already exists, the specified throughput will have no effect. Throughput can be changed for tables that already exist by using the DynamoDB API or the AWS Console.
 
 See [LevelUP options](https://github.com/level/levelup#options) for more information.
 
