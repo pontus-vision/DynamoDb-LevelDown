@@ -3,7 +3,7 @@ import { DynamoDB } from 'aws-sdk';
 import { WaiterConfiguration } from 'aws-sdk/lib/service';
 
 import { serialize, dataFromItem, rangeKeyFrom } from './utils';
-import { BatchItem, Keys, DynamoBillingMode } from './types';
+import { BatchItem, Keys, BillingMode } from './types';
 
 const MAX_BATCH_SIZE = 25;
 const RESOURCE_WAITER_DELAY = 1;
@@ -35,10 +35,10 @@ export class DynamoDbAsync {
     private tableName: string,
     private hashKey: string,
     private useConsistency: boolean,
-    private billingMode: DynamoBillingMode
+    private billingMode: BillingMode
   ) {
     this.queryAsync = promisify(this.dynamoDb.query).bind(this.dynamoDb);
-    // @ts-ignore - Possible override detection issue with AWS types
+    // @ts-ignore - Possible overload detection issue with AWS types
     this.waitForAsync = promisify(this.dynamoDb.waitFor).bind(this.dynamoDb);
     this.getItemAsync = promisify(this.dynamoDb.getItem).bind(this.dynamoDb);
     this.putItemAsync = promisify(this.dynamoDb.putItem).bind(this.dynamoDb);
@@ -154,7 +154,7 @@ export class DynamoDbAsync {
         { AttributeName: Keys.RANGE_KEY, KeyType: 'RANGE' }
       ],
       BillingMode: this.billingMode,
-      ProvisionedThroughput: this.billingMode == DynamoBillingMode.PROVISIONED ? throughput : undefined
+      ProvisionedThroughput: this.billingMode == BillingMode.PROVISIONED ? throughput : undefined
     });
     await this.waitForAsync('tableExists', {
       TableName: this.tableName,

@@ -79,14 +79,12 @@
             {
               "type": "style",
               "release": "patch"
+            },
+            {
+              "type": "overhaul",
+              "release": "major"
             }
-          ],
-          "parserOpts": {
-            "noteKeywords": [
-              "BREAKING CHANGE",
-              "BREAKING CHANGES"
-            ]
-          }
+          ]
         }
       ],
       "@semantic-release/release-notes-generator",

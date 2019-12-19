@@ -1,6 +1,113 @@
 import { DynamoDB } from 'aws-sdk';
-import { IteratorOptions, Keys, ValueTransformer } from './types';
-import fs from 'fs';
+import {
+  IteratorOptions,
+  Keys,
+  ValueTransformer,
+  Attachment,
+  AttachmentDefinition,
+  S3Pointer,
+  AttachmentResult,
+  S3Pointers,
+  S3ObjectBatch
+} from './types';
+
+function createS3Pointer(key: string): S3Pointer {
+  return {
+    _s3key: key
+  };
+}
+
+export function extractAttachments(key: any, value: any, definitions: AttachmentDefinition[] = []): AttachmentResult {
+  if (!!value && isPlainObject(value) && definitions.length > 0) {
+    const clone = cloneObject(value);
+    const result: Attachment[] = [];
+    const flattened: [{ key: string; keyPath: string; value: any; parent?: any }] = [
+      { key, keyPath: key, value: clone }
+    ];
+    do {
+      const entry = flattened.pop();
+      if (!entry) continue;
+
+      const element = entry.value;
+      const fullKey = entry.keyPath;
+      const defMatch = definitions.find(d => d.match.test(fullKey));
+      if (!!defMatch) {
+        if (entry.parent) {
+          entry.parent[entry.key] = createS3Pointer(fullKey);
+        }
+        result.push({
+          key: fullKey,
+          data: castToBuffer(element[defMatch.dataKey], defMatch.dataEncoding),
+          contentType: element[defMatch.contentTypeKey]
+        });
+      }
+      for (const propKey in element) {
+        if (element.hasOwnProperty(propKey)) {
+          const current = element[propKey];
+          const keyPath = [entry.keyPath, propKey].filter(v => !!v && v.length > 0).join('/');
+          if (!!current && isPlainObject(current)) {
+            flattened.push({ key: propKey, keyPath, value: current, parent: element });
+          }
+        }
+      }
+    } while (flattened.length > 0);
+    return { newValue: clone, attachments: result };
+  }
+  return { newValue: value, attachments: [] };
+}
+export function extractS3Pointers(key: any, value: any): S3Pointers {
+  if (!!value && isPlainObject(value)) {
+    const result: S3Pointers = {};
+    const flattened: [{ keyPath: string; value: any }] = [{ keyPath: key, value }];
+    do {
+      const entry = flattened.shift();
+      if (!entry) continue;
+
+      const element = entry.value;
+      for (const propKey in element) {
+        if (element.hasOwnProperty(propKey)) {
+          const current = element[propKey];
+          const keyPath = [entry.keyPath, propKey].filter(v => !!v && v.length > 0).join('/');
+          if (!!current && isPlainObject(current)) {
+            if (current.hasOwnProperty('_s3key')) {
+              result[keyPath] = current;
+            } else {
+              flattened.push({ keyPath, value: current });
+            }
+          }
+        }
+      }
+    } while (flattened.length > 0);
+    return result;
+  }
+  return {};
+}
+
+export function restoreAttachments(
+  value: any,
+  pointers: S3Pointers,
+  attachments: S3ObjectBatch,
+  definitions: AttachmentDefinition[] = []
+): any {
+  if (!!value && !!pointers && !!attachments) {
+    const newValue = cloneObject(value);
+    for (const keyPath in pointers) {
+      const definition = definitions.find(d => d.match.test(keyPath));
+      if (!definition) continue;
+
+      const propNames = keyPath.split('/');
+      const lastPropName = propNames.pop() as string;
+      const target = propNames.reduce((p: any, c: string) => p[c] || p, newValue);
+      const s3Object = attachments[target[lastPropName]._s3key];
+      target[lastPropName] = {
+        [definition.contentTypeKey]: s3Object.ContentType,
+        [definition.dataKey]: s3Object.Body?.toString(definition.dataEncoding)
+      };
+    }
+    return newValue;
+  }
+  return value;
+}
 
 export function cloneObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
@@ -125,12 +232,13 @@ export function hexEncodeString(str: string): string {
 }
 
 export function castToBuffer(
-  object: Buffer | Array<any> | string | boolean | number | null | undefined | object
+  object: Buffer | Array<any> | string | boolean | number | null | undefined | object,
+  encoding?: BufferEncoding
 ): Buffer {
   let result: Buffer;
   if (object instanceof Buffer) result = object;
   else if (object instanceof Array) result = Buffer.from(object);
-  else if (typeof object === 'string') result = Buffer.from(object);
+  else if (typeof object === 'string') result = Buffer.from(object, encoding);
   else if (typeof object === 'boolean') {
     const b = Buffer.alloc(1);
     b.writeUInt8(object === true ? 1 : 0, 0);

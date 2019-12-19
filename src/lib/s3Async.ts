@@ -1,10 +1,10 @@
 import { S3 } from 'aws-sdk';
 import { promisify } from 'util';
+import { Attachment } from './types';
 
-const _s3: { [region: string]: S3Async } = {};
+const NOOP_PROMISE = <T>() => new Promise<T>(() => undefined);
 
 export class S3Async {
-  private _s3: S3;
   private headBucketAsync: (params: S3.Types.HeadBucketRequest) => Promise<any>;
   private createBucketAsync: (params: S3.Types.CreateBucketRequest) => Promise<S3.Types.CreateBucketOutput>;
   private objectExistsAsync: (params: S3.Types.HeadObjectRequest) => Promise<S3.Types.HeadObjectOutput>;
@@ -12,33 +12,42 @@ export class S3Async {
   private getObjectAsync: (params: S3.Types.GetObjectRequest) => Promise<S3.Types.GetObjectOutput>;
   private deleteObjectAsync: (params: S3.Types.DeleteObjectRequest) => Promise<S3.Types.DeleteObjectOutput>;
   private listObjectsAsync: (params: S3.Types.ListObjectsV2Request) => Promise<S3.Types.ListObjectsV2Output>;
+  private deleteBucketAsync: (params: S3.Types.DeleteBucketRequest) => Promise<any>;
 
-  private constructor(s3: S3) {
-    this._s3 = s3;
-    this.headBucketAsync = promisify(this._s3.headBucket).bind(this._s3);
-    this.createBucketAsync = promisify(this._s3.createBucket).bind(this._s3);
-    this.objectExistsAsync = promisify(this._s3.headObject).bind(this._s3);
-    this.putObjectAsync = promisify(this._s3.putObject).bind(this._s3);
-    this.getObjectAsync = promisify(this._s3.getObject).bind(this._s3);
-    this.deleteObjectAsync = promisify(this._s3.deleteObject).bind(this._s3);
-    this.listObjectsAsync = promisify(this._s3.listObjectsV2).bind(this._s3);
+  constructor(private s3: S3, private bucketName: string) {
+    if (!!s3) {
+      this.putObjectAsync = promisify(this.s3.putObject).bind(this.s3);
+      this.getObjectAsync = promisify(this.s3.getObject).bind(this.s3);
+      this.headBucketAsync = promisify(this.s3.headBucket).bind(this.s3);
+      this.objectExistsAsync = promisify(this.s3.headObject).bind(this.s3);
+      this.createBucketAsync = promisify(this.s3.createBucket).bind(this.s3);
+      this.deleteObjectAsync = promisify(this.s3.deleteObject).bind(this.s3);
+      this.listObjectsAsync = promisify(this.s3.listObjectsV2).bind(this.s3);
+      this.deleteBucketAsync = promisify(this.s3.deleteBucket).bind(this.s3);
+    } else {
+      this.putObjectAsync = NOOP_PROMISE;
+      this.getObjectAsync = NOOP_PROMISE;
+      this.headBucketAsync = NOOP_PROMISE;
+      this.objectExistsAsync = NOOP_PROMISE;
+      this.createBucketAsync = NOOP_PROMISE;
+      this.deleteObjectAsync = NOOP_PROMISE;
+      this.listObjectsAsync = NOOP_PROMISE;
+      this.deleteBucketAsync = NOOP_PROMISE;
+    }
   }
 
-  static getInstance(endpoint: string, region: string): S3Async {
-    const config = {
-      s3ForcePathStyle: true,
-      s3DisableBodySigning: true,
-      region: region,
-      endpoint: endpoint,
-      apiVersion: '2006-03-01'
-    };
-    _s3[config.region] = _s3[config.region] || new S3Async(new S3(config));
-    return _s3[config.region];
+  static get noop() {
+    return new S3Async((undefined as unknown) as S3, (undefined as unknown) as string);
   }
 
-  async listObjects(bucketName: string, prefix: string, maxKeys?: number, continuationToken?: string) {
+  private get isNoop() {
+    return !this.s3;
+  }
+
+  async listObjects(prefix: string, maxKeys?: number, continuationToken?: string) {
+    if (this.isNoop === true) return;
     return await this.listObjectsAsync({
-      Bucket: bucketName,
+      Bucket: this.bucketName,
       Prefix: prefix,
       Delimiter: '/',
       MaxKeys: maxKeys,
@@ -46,55 +55,62 @@ export class S3Async {
     });
   }
 
-  async listObjectsRecursive(bucketName: string, prefix: string, maxKeys?: number, continuationToken?: string) {
+  async listObjectsRecursive(prefix: string, maxKeys?: number, continuationToken?: string) {
+    if (this.isNoop === true) return;
     return await this.listObjectsAsync({
-      Bucket: bucketName,
+      Bucket: this.bucketName,
       Prefix: prefix,
       MaxKeys: maxKeys,
       ContinuationToken: continuationToken
     });
   }
 
-  async bucketExists(bucketName: string): Promise<boolean> {
+  async bucketExists() {
+    if (this.isNoop === true) return true;
     try {
-      await this.headBucketAsync({ Bucket: bucketName });
+      await this.headBucketAsync({ Bucket: this.bucketName });
     } catch (e) {
       return false;
     }
     return true;
   }
 
-  async createBucket(bucketName: string): Promise<boolean> {
+  async createBucket() {
+    if (this.isNoop === true) return true;
     try {
-      await this.createBucketAsync({ Bucket: bucketName });
+      await this.createBucketAsync({ Bucket: this.bucketName });
     } catch (e) {
       return false;
     }
     return true;
   }
 
-  async objectExists(bucketName: string, key: string): Promise<boolean> {
+  async deleteBucket() {
+    if (this.isNoop === true) return true;
     try {
-      const response = await this.objectExistsAsync({ Bucket: bucketName, Key: key });
-      return (response.ContentLength || 0) > 0;
+      await this.deleteBucketAsync({ Bucket: this.bucketName });
+    } catch (e) {
+      return false;
+    }
+    return true;
+  }
+
+  async objectExists(key: string) {
+    if (this.isNoop === true) return true;
+    try {
+      const response = await this.objectExistsAsync({ Bucket: this.bucketName, Key: key });
+      return !!response.ContentLength;
     } catch (e) {
       return false;
     }
   }
 
-  async putObject(bucketName: string, key: string, data: any): Promise<S3.PutObjectOutput> {
-    return await this.putObjectAsync({
-      Key: key,
-      Bucket: bucketName,
-      Body: data
-    });
-  }
-
-  async upload(bucketName: string, key: string, data: any, acl: string = 'public-read') {
+  async upload(key: string, data: any, acl: S3.ObjectCannedACL = 'public-read') {
+    if (this.isNoop === true) return;
     return new Promise<S3.ManagedUpload.SendData>((resolve, reject) => {
-      const managedUpload = this._s3.upload({
+      const managedUpload = this.s3.upload({
         Key: key,
-        Bucket: bucketName,
+        Bucket: this.bucketName,
         Body: data,
         ACL: acl
       });
@@ -105,11 +121,46 @@ export class S3Async {
     });
   }
 
-  async getObject(bucketName: string, key: string): Promise<S3.GetObjectOutput> {
-    return await this.getObjectAsync({ Bucket: bucketName, Key: key });
+  async putObject(key: string, data: any, contentType?: string, acl: S3.ObjectCannedACL = 'public-read') {
+    if (this.isNoop === true) return;
+    const putResult = await this.putObjectAsync({
+      Key: key,
+      Bucket: this.bucketName,
+      Body: data,
+      ContentType: contentType,
+      ACL: acl
+    });
+    return putResult;
   }
 
-  async deleteObject(bucketName: string, key: string): Promise<S3.DeleteObjectOutput> {
-    return await this.deleteObjectAsync({ Bucket: bucketName, Key: key });
+  async putObjectBatch(...attachments: Attachment[]) {
+    if (this.isNoop === true) return;
+    return await Promise.all(
+      attachments.map(a => this.putObject(a.key, a.data, a.contentType).then(result => ({ key: a.key, result })))
+    );
+  }
+
+  async getObject(key: string) {
+    if (this.isNoop === true) return;
+    return await this.getObjectAsync({ Bucket: this.bucketName, Key: key });
+  }
+
+  async getObjectBatch(...keys: string[]): Promise<{ [key: string]: S3.GetObjectOutput }> {
+    if (this.isNoop === true) return {};
+    return await Promise.all(keys.map(key => this.getObject(key).then(result => ({ key, result })))).then(all =>
+      all.reduce((p, c) => ({ ...p, [c.key]: c.result }), {})
+    );
+  }
+
+  async deleteObject(key: string) {
+    if (this.isNoop === true) return;
+    return await this.deleteObjectAsync({ Bucket: this.bucketName, Key: key });
+  }
+
+  async deleteObjectBatch(...keys: string[]): Promise<{ [key: string]: S3.DeleteObjectOutput }> {
+    if (this.isNoop === true) return {};
+    return await Promise.all(keys.map(key => this.deleteObject(key).then(result => ({ key, result })))).then(all =>
+      all.reduce((p, c) => ({ ...p, [c.key]: c.result }), {})
+    );
   }
 }

@@ -3,9 +3,7 @@ import levelup, { LevelUp } from 'levelup';
 import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
-import { DynamoDbDown } from '../dist/lib/dynamoDbDown';
-import { DynamoBillingMode } from '../dist/lib/types';
-import { DynamoDbDownFactory } from '../dist/index';
+import { DynamoDbDown } from '../src/index';
 
 const suiteLevelSupports = require('level-supports/test');
 const suiteLevelDown = require('abstract-leveldown/test');
@@ -19,7 +17,7 @@ const DynamoDbOptions: DynamoDB.ClientConfiguration = {
 };
 
 const dynamoDb = new DynamoDB(DynamoDbOptions);
-const dynamoDownFactory = DynamoDbDownFactory(dynamoDb);
+const dynamoDownFactory = DynamoDbDown.factory(dynamoDb);
 
 const leveldown = (location: string) => {
   const dynamoDown = dynamoDownFactory(location);
@@ -54,8 +52,12 @@ const createTestOptions = () => {
 test('offline long-running tests', t => {
   t.test('destroy offline', t => {
     const dbl = 'offlineBase';
-    const ddb = new DynamoDB({ ...DynamoDbOptions, endpoint: 'http://invalid:666' });
-    const ddf = DynamoDbDownFactory(ddb);
+    const ddb = new DynamoDB({
+      ...DynamoDbOptions,
+      endpoint: 'http://invalid:666',
+      httpOptions: { connectTimeout: 500 }
+    });
+    const ddf = DynamoDbDown.factory(ddb);
     ddf(dbl);
     ddf.destroy(dbl, e => {
       t.ok(e, 'got error');
@@ -94,7 +96,9 @@ test('destroyer', t => {
 
 test('factory options', t => {
   t.test('default provisioning', t => {
-    const dynamoDown = DynamoDbDownFactory(dynamoDb, { billingMode: DynamoBillingMode.PROVISIONED });
+    const dynamoDown = DynamoDbDown.factory(dynamoDb, {
+      billingMode: DynamoDbDown.Types.BillingMode.PROVISIONED
+    });
     const db = dynamoDown('fake_news');
     db.open(e => {
       t.notOk(e, 'creates/opens with default provisioning');
