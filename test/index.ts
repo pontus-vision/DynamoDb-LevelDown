@@ -51,12 +51,15 @@ const createTestOptions = () => {
  */
 test('offline long-running tests', t => {
   t.test('destroy offline', t => {
-    const dbl = 'offlineBase';
-    const ddb = new DynamoDB({
+    const ddc: DynamoDB.ClientConfiguration = {
       ...DynamoDbOptions,
       endpoint: 'http://invalid:666',
-      httpOptions: { connectTimeout: 500 }
-    });
+      maxRetries: 0,
+      retryDelayOptions: { base: 0, customBackoff: () => 0 },
+      httpOptions: { connectTimeout: 250, timeout: 250 }
+    };
+    const dbl = 'offlineBase';
+    const ddb = new DynamoDB(ddc);
     const ddf = DynamoDbDown.factory(ddb);
     ddf(dbl);
     ddf.destroy(dbl, e => {
