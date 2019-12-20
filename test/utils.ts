@@ -1,5 +1,5 @@
 import test from 'tape';
-import { Keys } from '../dist/lib/types';
+import { Keys, AttachmentDefinition } from '../dist/lib/types';
 import {
   cloneObject,
   maybeDelay,
@@ -9,7 +9,11 @@ import {
   hexEncodeString,
   castToBuffer,
   isBuffer,
-  deserialize
+  deserialize,
+  extractAttachments,
+  restoreAttachments,
+  extractS3Pointers,
+  promiseS3Body
 } from '../dist/lib/utils';
 
 /*
@@ -29,23 +33,76 @@ test('utility tests', t => {
     t.end();
   });
 
+  t.test('extractAttachments with top-level/parent-less match', t => {
+    const attachmentDefinitions: AttachmentDefinition[] = [
+      {
+        match: /.*/,
+        dataKey: 'data',
+        contentTypeKey: 'content_type',
+        dataEncoding: 'base64'
+      }
+    ];
+    const input = { data: Buffer.from('bar'), content_type: 'text/plain' };
+    const result = extractAttachments('foo', input, attachmentDefinitions);
+
+    t.ok(result);
+    t.ok(result.newValue);
+    t.ok(result.attachments);
+
+    t.end();
+  });
+
+  t.test('restoreAttachments', t => {
+    t.test('promiseS3Body', t => {
+      const inputWith = { Body: Buffer.from('foo') };
+      const inputWithout = { Body: undefined };
+
+      const resultWith = promiseS3Body(inputWith);
+      t.ok(resultWith, 'got value from `Buffer`');
+      t.equal(resultWith, inputWith.Body, 'got expected value from `Buffer`');
+
+      const resultWithout = promiseS3Body(inputWithout);
+      t.ok(resultWithout, 'got value from `undefined`');
+      t.looseEqual(resultWithout, Buffer.alloc(0), 'got expected value from `undefined`');
+
+      t.end();
+    });
+
+    t.test('restoreAttachments with `definitions` mismatch', t => {
+      const input = { _id: 'foo', _attachments: { 'myImage.png': { _s3key: 'foo/_attachments/myImage.png' } } };
+      const pointers = extractS3Pointers(input._id, input);
+      const result = restoreAttachments(input, pointers, {}, []);
+
+      t.deepEqual(result, input, 'no changes');
+
+      t.end();
+    });
+
+    t.test('restoreAttachments with `undefined` value', t => {
+      const input = undefined;
+      const result = restoreAttachments(input, {}, {}, []);
+
+      t.end(result);
+    });
+
+    t.end();
+  });
+
   t.test('async delay', t => {
     t.test('delays with ms > 0', async t => {
       const delayTimeMs = 100;
-      const timestamp1 = Date.now();
+      const timestamp = Date.now();
       await maybeDelay(delayTimeMs);
-      const timestamp2 = Date.now();
-      const difference = timestamp2 - timestamp1;
-      t.true(difference >= delayTimeMs, `delayed for ${difference}`);
+      const difference = Date.now() - timestamp;
+      t.true(difference >= delayTimeMs - 5, `delayed for ${difference} (+/- 5)`);
       t.end();
     });
     t.test('does not delays with ms <= 0', async t => {
       const delayTimeMs = 0;
-      const timestamp1 = Date.now();
+      const timestamp = Date.now();
       await maybeDelay(delayTimeMs);
-      const timestamp2 = Date.now();
-      const difference = timestamp2 - timestamp1;
-      t.true(difference <= 5, `delayed for ${difference}`);
+      const difference = Date.now() - timestamp;
+      t.true(difference <= 5, `delayed for ${difference} (+/- 5)`);
       t.end();
     });
   });

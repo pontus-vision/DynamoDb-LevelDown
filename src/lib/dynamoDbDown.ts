@@ -15,8 +15,9 @@ import supports, { SupportManifest } from 'level-supports';
 import { DynamoDbIterator } from './iterator';
 import { DynamoDbAsync } from './dynamoDbAsync';
 import * as DynamoTypes from './types';
-import { isBuffer, extractAttachments, extractS3Pointers, restoreAttachments } from './utils';
+import { isBuffer } from './utils';
 import { S3Async } from './s3Async';
+import { DynamoS3 } from './dynamoS3';
 
 const manifest: SupportManifest = {
   bufferKeys: true,
@@ -41,20 +42,19 @@ export class DynamoDbDown extends AbstractLevelDOWN {
   private tableName: string;
   private s3Async: S3Async;
   private dynamoDbAsync: DynamoDbAsync;
-  private s3AttachmentDefs?: DynamoDbDown.Types.AttachmentDefinition[];
+  private s3AttachmentDefs: DynamoDbDown.Types.AttachmentDefinition[];
 
   constructor(dynamoDb: DynamoDB, location: string, options?: DynamoDbDown.Types.Options) {
     super(location);
 
-    const useS3 = !!options?.s3?.client && !!options.s3.attachments;
     const billingMode = options?.billingMode || DynamoTypes.BillingMode.PAY_PER_REQUEST;
     const useConsistency = options?.useConsistency === true;
     const tableHash = location.split('$');
 
     this.tableName = tableHash[0];
     this.hashKey = tableHash[1] || '!';
-    this.s3AttachmentDefs = options?.s3?.attachments;
-    this.s3Async = !!useS3 ? new S3Async(options?.s3?.client as S3, this.tableName) : S3Async.noop;
+    this.s3AttachmentDefs = options?.s3?.attachments || [];
+    this.s3Async = new S3Async(options?.s3?.client as S3, this.tableName);
     this.dynamoDbAsync = new DynamoDbAsync(dynamoDb, this.tableName, this.hashKey, useConsistency, billingMode);
   }
 
@@ -122,11 +122,8 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _put(key: any, value: any, options: AbstractOptions, cb: ErrorCallback) {
     try {
-      const savable = extractAttachments(key, value, this.s3AttachmentDefs);
-      if (savable.attachments.length > 0) {
-        await this.s3Async.putObjectBatch(...savable.attachments);
-      }
-      await this.dynamoDbAsync.put(key, savable.newValue);
+      const newValue = await DynamoS3.maybeSave(key, value, this.s3Async, this.s3AttachmentDefs);
+      await this.dynamoDbAsync.put(key, newValue);
       cb(undefined);
     } catch (e) {
       cb(e);
@@ -136,12 +133,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
   async _get(key: any, options: AbstractGetOptions, cb: ErrorValueCallback<any>) {
     try {
       let output = await this.dynamoDbAsync.get(key);
-      const pointers = extractS3Pointers(key, output);
-      const attachmentKeys = Object.values(pointers).map(p => p._s3key);
-      if (attachmentKeys.length > 0) {
-        const attachments = await this.s3Async.getObjectBatch(...attachmentKeys);
-        output = restoreAttachments(output, pointers, attachments, this.s3AttachmentDefs);
-      }
+      output = await DynamoS3.maybeRestore(key, output, this.s3Async, this.s3AttachmentDefs);
       const asBuffer = options.asBuffer !== false;
       if (asBuffer) {
         output = isBuffer(output) ? output : Buffer.from(String(output));
@@ -154,19 +146,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _del(key: any, options: AbstractOptions, cb: ErrorCallback) {
     try {
-      let output: any;
-      try {
-        output = await this.dynamoDbAsync.get(key);
-      } catch (e) {
-        e.message === 'NotFound';
-      }
-      if (!!output) {
-        const pointers = extractS3Pointers(key, output);
-        const attachmentKeys = Object.values(pointers).map(p => p._s3key);
-        if (attachmentKeys.length > 0) {
-          await this.s3Async.deleteObjectBatch(...attachmentKeys);
-        }
-      }
+      await DynamoS3.maybeDelete(key, this.dynamoDbAsync, this.s3Async);
       await this.dynamoDbAsync.delete(key);
       cb(undefined);
     } catch (e) {
@@ -176,6 +156,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _batch(array: ReadonlyArray<AbstractBatch<any, any>>, options: AbstractOptions, cb: ErrorCallback) {
     try {
+      // TODO: Wire-up S3 support for batch operations
       await this.dynamoDbAsync.batch(array);
       cb(undefined);
     } catch (e) {
@@ -192,6 +173,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
   }
 }
 
+/* istanbul ignore next */
 export namespace DynamoDbDown {
   export import Types = DynamoTypes;
 }

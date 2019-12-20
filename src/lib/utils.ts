@@ -1,4 +1,4 @@
-import { DynamoDB } from 'aws-sdk';
+import { DynamoDB, S3 } from 'aws-sdk';
 import {
   IteratorOptions,
   Keys,
@@ -17,19 +17,21 @@ function createS3Pointer(key: string): S3Pointer {
   };
 }
 
-export function extractAttachments(key: any, value: any, definitions: AttachmentDefinition[] = []): AttachmentResult {
+type ExtractionItem = { key: string; keyPath: string; value: any; parent?: any };
+
+export function promiseS3Body(input: { Body?: S3.Body }): S3.Body {
+  return input.Body || Buffer.alloc(0);
+}
+
+export function extractAttachments(key: any, value: any, definitions: AttachmentDefinition[]): AttachmentResult {
   if (!!value && isPlainObject(value) && definitions.length > 0) {
     const clone = cloneObject(value);
     const result: Attachment[] = [];
-    const flattened: [{ key: string; keyPath: string; value: any; parent?: any }] = [
-      { key, keyPath: key, value: clone }
-    ];
+    const flattened: ExtractionItem[] = [{ key, keyPath: key, value: clone }];
     do {
-      const entry = flattened.pop();
-      if (!entry) continue;
-
+      const entry = flattened.shift() as ExtractionItem;
       const element = entry.value;
-      const fullKey = entry.keyPath;
+      const fullKey = entry.keyPath as string;
       const defMatch = definitions.find(d => d.match.test(fullKey));
       if (!!defMatch) {
         if (entry.parent) {
@@ -42,12 +44,10 @@ export function extractAttachments(key: any, value: any, definitions: Attachment
         });
       }
       for (const propKey in element) {
-        if (element.hasOwnProperty(propKey)) {
-          const current = element[propKey];
+        const current = element[propKey];
+        if (!!current && isPlainObject(current)) {
           const keyPath = [entry.keyPath, propKey].filter(v => !!v && v.length > 0).join('/');
-          if (!!current && isPlainObject(current)) {
-            flattened.push({ key: propKey, keyPath, value: current, parent: element });
-          }
+          flattened.push({ key: propKey, keyPath, value: current, parent: element });
         }
       }
     } while (flattened.length > 0);
@@ -55,25 +55,22 @@ export function extractAttachments(key: any, value: any, definitions: Attachment
   }
   return { newValue: value, attachments: [] };
 }
+
 export function extractS3Pointers(key: any, value: any): S3Pointers {
   if (!!value && isPlainObject(value)) {
     const result: S3Pointers = {};
-    const flattened: [{ keyPath: string; value: any }] = [{ keyPath: key, value }];
+    const flattened: ExtractionItem[] = [{ key, keyPath: key, value }];
     do {
-      const entry = flattened.shift();
-      if (!entry) continue;
-
+      const entry = flattened.shift() as ExtractionItem;
       const element = entry.value;
       for (const propKey in element) {
-        if (element.hasOwnProperty(propKey)) {
-          const current = element[propKey];
-          const keyPath = [entry.keyPath, propKey].filter(v => !!v && v.length > 0).join('/');
-          if (!!current && isPlainObject(current)) {
-            if (current.hasOwnProperty('_s3key')) {
-              result[keyPath] = current;
-            } else {
-              flattened.push({ keyPath, value: current });
-            }
+        const current = element[propKey];
+        const keyPath = [entry.keyPath, propKey].filter(v => !!v && v.length > 0).join('/');
+        if (!!current && isPlainObject(current)) {
+          if (current.hasOwnProperty('_s3key')) {
+            result[keyPath] = current;
+          } else {
+            flattened.push({ key: propKey, keyPath, value: current });
           }
         }
       }
@@ -87,7 +84,7 @@ export function restoreAttachments(
   value: any,
   pointers: S3Pointers,
   attachments: S3ObjectBatch,
-  definitions: AttachmentDefinition[] = []
+  definitions: AttachmentDefinition[]
 ): any {
   if (!!value && !!pointers && !!attachments) {
     const newValue = cloneObject(value);
@@ -101,7 +98,7 @@ export function restoreAttachments(
       const s3Object = attachments[target[lastPropName]._s3key];
       target[lastPropName] = {
         [definition.contentTypeKey]: s3Object.ContentType,
-        [definition.dataKey]: s3Object.Body?.toString(definition.dataEncoding)
+        [definition.dataKey]: promiseS3Body(s3Object).toString(definition.dataEncoding)
       };
     }
     return newValue;
@@ -112,6 +109,10 @@ export function restoreAttachments(
 export function cloneObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
+  } else if (isBuffer(obj)) {
+    const newBuffer = Buffer.alloc(((obj as unknown) as Buffer).length);
+    ((obj as unknown) as Buffer).copy(newBuffer);
+    return (newBuffer as unknown) as T;
   }
 
   const temp = Object.create(<Object>obj);
