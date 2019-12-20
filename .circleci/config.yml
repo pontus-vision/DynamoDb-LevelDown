@@ -45,7 +45,7 @@ jobs:
           command: |
             ./cc-test-reporter before-build
             yarn test
-            ./cc-test-reporter after-build -t lcov
+            ./cc-test-reporter after-build -t lcov -p ./build/coverage
 
       - codecov/upload:
           file: build/coverage/lcov.info
