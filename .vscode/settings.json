@@ -1,12 +1,18 @@
 {
   "standard.enable": false,
   "cSpell.words": [
+    "Backoff",
     "Funcs",
+    "corge",
     "dbot",
     "dynalite",
     "esac",
+    "foobase",
+    "grault",
     "leveldown",
     "localstack",
-    "posttest"
+    "posttest",
+    "tempbase",
+    "testbuffer"
   ]
 }
