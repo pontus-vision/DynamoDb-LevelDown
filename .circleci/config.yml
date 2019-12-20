@@ -4,6 +4,9 @@ orbs:
 
 jobs:
   build:
+    environment:
+      CC_TEST_REPORTER_ID: efef69bcc07b8d45b2331b5fe21c83a1d073f35bc7fda2dd55f956494d6f8daf
+
     docker:
       - image: circleci/node:12.13
       - image: localstack/localstack:latest
@@ -31,8 +34,18 @@ jobs:
           key: v1-dependencies-{{ checksum "package.json" }}
 
       - run:
+          name: Setup Code Climate
+          command: |
+            # download test reporter as a static binary
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+
+      - run:
           name: Testing
-          command: yarn test
+          command: |
+            ./cc-test-reporter before-build
+            yarn test
+            ./cc-test-reporter after-build -i build/coverage/lcov.info
 
       - codecov/upload:
           file: build/coverage/lcov.info
