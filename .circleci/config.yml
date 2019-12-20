@@ -43,9 +43,8 @@ jobs:
       - run:
           name: Testing
           command: |
-            ./cc-test-reporter before-build
             yarn test
-            ./cc-test-reporter after-build -t lcov -p ./build/coverage
+            ./cc-test-reporter upload-coverage -i build/coverage/lcov.info
 
       - codecov/upload:
           file: build/coverage/lcov.info
