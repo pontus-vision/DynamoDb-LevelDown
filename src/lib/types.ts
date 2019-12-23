@@ -34,6 +34,9 @@ export interface IteratorOptions extends AbstractIteratorOptions<any> {
 }
 
 /* @internal */
+export type ExtractionItem = { key: string; keyPath: string; value: any; parent?: any };
+
+/* @internal */
 export interface Attachment {
   key: string;
   contentType: string;
@@ -84,6 +87,7 @@ export class Keys {
   static readonly DATA_KEY = 'data';
   static readonly HASH_KEY = 'hash';
   static readonly RANGE_KEY = 'range';
+  static readonly S3_KEY = '_s3key';
 }
 
 /* @internal */

@@ -1,15 +1,12 @@
 import test from 'tape';
 import { Keys, AttachmentDefinition } from '../src/lib/types';
+import { serialize, deserialize } from '../src/lib/serialize';
 import {
   cloneObject,
-  maybeDelay,
   withoutKeys,
-  serialize,
   rangeKeyFrom,
-  hexEncodeString,
   castToBuffer,
   isBuffer,
-  deserialize,
   extractAttachments,
   restoreAttachments,
   extractS3Pointers,
@@ -88,25 +85,6 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('async delay', t => {
-    t.test('delays with ms > 0', async t => {
-      const delayTimeMs = 100;
-      const timestamp = Date.now();
-      await maybeDelay(delayTimeMs);
-      const difference = Date.now() - timestamp;
-      t.true(difference >= delayTimeMs - 5, `delayed for ${difference} (+/- 5)`);
-      t.end();
-    });
-    t.test('does not delays with ms <= 0', async t => {
-      const delayTimeMs = 0;
-      const timestamp = Date.now();
-      await maybeDelay(delayTimeMs);
-      const difference = Date.now() - timestamp;
-      t.true(difference <= 5, `delayed for ${difference} (+/- 5)`);
-      t.end();
-    });
-  });
-
   t.test('underlying key removal', t => {
     t.test('success with undefined', t => {
       const keyless = withoutKeys(<any>undefined);
@@ -147,7 +125,7 @@ test('utility tests', t => {
       } catch (e) {
         t.ok(e, 'has error');
         t.ok(e.message, 'has error message');
-        t.true(/.*no keys.*undefined.*/i.test(e.message), 'correct error message');
+        t.true(/.*no range key.*/i.test(e.message), 'correct error message');
       }
 
       t.end();
@@ -197,13 +175,6 @@ test('utility tests', t => {
 
       t.end();
     });
-
-    t.end();
-  });
-
-  t.test('hex encode strings', t => {
-    const encoded = hexEncodeString('foobase');
-    t.equal(encoded, '666f6f62617365', 'correctly encodes string');
 
     t.end();
   });

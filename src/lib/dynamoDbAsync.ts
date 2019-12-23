@@ -2,8 +2,9 @@ import { promisify } from 'util';
 import { DynamoDB } from 'aws-sdk';
 import { WaiterConfiguration } from 'aws-sdk/lib/service';
 
-import { serialize, dataFromItem, rangeKeyFrom, withoutKeys } from './utils';
+import { serialize } from './serialize';
 import { BatchItem, Keys, BillingMode } from './types';
+import { dataFromItem, rangeKeyFrom, withoutKeys } from './utils';
 
 const MAX_BATCH_SIZE = 25;
 const RESOURCE_WAITER_DELAY = 1;

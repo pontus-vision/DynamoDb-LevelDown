@@ -23,33 +23,15 @@ export class S3Async {
   }
 
   async bucketExists() {
-    if (!this.headBucketAsync) return true;
-    try {
-      await this.headBucketAsync({ Bucket: this.bucketName });
-    } catch (e) {
-      return false;
-    }
-    return true;
+    return await this.useCallSuccess(this.headBucketAsync);
   }
 
   async createBucket() {
-    if (!this.createBucketAsync) return true;
-    try {
-      await this.createBucketAsync({ Bucket: this.bucketName });
-    } catch (e) {
-      return false;
-    }
-    return true;
+    return await this.useCallSuccess(this.createBucketAsync);
   }
 
   async deleteBucket() {
-    if (!this.deleteBucketAsync) return true;
-    try {
-      await this.deleteBucketAsync({ Bucket: this.bucketName });
-    } catch (e) {
-      return false;
-    }
-    return true;
+    return await this.useCallSuccess(this.deleteBucketAsync);
   }
 
   async putObject(key: string, data: any, contentType?: string, acl: S3.ObjectCannedACL = 'public-read') {
@@ -78,9 +60,7 @@ export class S3Async {
 
   async getObjectBatch(...keys: string[]): Promise<{ [key: string]: S3.GetObjectOutput }> {
     if (!this.getObjectAsync) return {};
-    return await Promise.all(keys.map(key => this.getObject(key).then(result => ({ key, result })))).then(all =>
-      all.reduce((p, c) => ({ ...p, [c.key]: c.result }), {})
-    );
+    return await this.simpleBatch(keys, key => this.getObject(key));
   }
 
   async deleteObject(key: string) {
@@ -90,8 +70,22 @@ export class S3Async {
 
   async deleteObjectBatch(...keys: string[]): Promise<{ [key: string]: S3.DeleteObjectOutput }> {
     if (!this.deleteObjectAsync) return {};
-    return await Promise.all(keys.map(key => this.deleteObject(key).then(result => ({ key, result })))).then(all =>
+    return await this.simpleBatch(keys, key => this.deleteObject(key));
+  }
+
+  private simpleBatch<T>(keys: string[], func: (key: string) => Promise<T>) {
+    return Promise.all(keys.map(key => func(key).then(result => ({ key, result })))).then(all =>
       all.reduce((p, c) => ({ ...p, [c.key]: c.result }), {})
     );
+  }
+
+  private async useCallSuccess<T>(func?: (params: { Bucket: string }) => Promise<T>): Promise<boolean> {
+    if (!func) return true;
+    try {
+      await func({ Bucket: this.bucketName });
+    } catch (e) {
+      return false;
+    }
+    return true;
   }
 }
