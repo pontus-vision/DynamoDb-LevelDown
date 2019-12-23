@@ -10,7 +10,6 @@ import {
   S3Pointers,
   S3ObjectBatch
 } from './types';
-
 function createS3Pointer(key: string): S3Pointer {
   return {
     _s3key: key
@@ -19,10 +18,12 @@ function createS3Pointer(key: string): S3Pointer {
 
 type ExtractionItem = { key: string; keyPath: string; value: any; parent?: any };
 
+/* @internal */
 export function promiseS3Body(input: { Body?: S3.Body }): S3.Body {
   return input.Body || Buffer.alloc(0);
 }
 
+/* @internal */
 export function extractAttachments(key: any, value: any, definitions: AttachmentDefinition[]): AttachmentResult {
   if (!!value && isPlainObject(value) && definitions.length > 0) {
     const clone = cloneObject(value);
@@ -56,6 +57,7 @@ export function extractAttachments(key: any, value: any, definitions: Attachment
   return { newValue: value, attachments: [] };
 }
 
+/* @internal */
 export function extractS3Pointers(key: any, value: any): S3Pointers {
   if (!!value && isPlainObject(value)) {
     const result: S3Pointers = {};
@@ -80,6 +82,7 @@ export function extractS3Pointers(key: any, value: any): S3Pointers {
   return {};
 }
 
+/* @internal */
 export function restoreAttachments(
   value: any,
   pointers: S3Pointers,
@@ -106,6 +109,7 @@ export function restoreAttachments(
   return value;
 }
 
+/* @internal */
 export function cloneObject<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
@@ -122,12 +126,14 @@ export function cloneObject<T>(obj: T): T {
   return <T>temp;
 }
 
+/* @internal */
 export async function maybeDelay(ms?: number): Promise<void> {
   if (!!ms && ms > 0) {
     await new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
+/* @internal */
 export function withoutKeys<T extends DynamoDB.ItemCollectionKeyAttributeMap>(item: T): T {
   if (!item) return item;
 
@@ -143,6 +149,7 @@ export function withoutKeys<T extends DynamoDB.ItemCollectionKeyAttributeMap>(it
   return <T>newItem;
 }
 
+/* @internal */
 export function keyConditionsFor(hashKey: string, rangeCondition: DynamoDB.Condition): DynamoDB.KeyConditions {
   return {
     [Keys.HASH_KEY]: {
@@ -153,11 +160,13 @@ export function keyConditionsFor(hashKey: string, rangeCondition: DynamoDB.Condi
   };
 }
 
+/* @internal */
 export function dataFromItem<T = any>(item: DynamoDB.ItemCollectionKeyAttributeMap): T {
   const deserialized = deserialize({ M: item });
   return deserialized[Keys.DATA_KEY];
 }
 
+/* @internal */
 export function rangeKeyFrom(item: any): string {
   if (!item) throw new Error('No keys are available from undefined');
 
@@ -169,6 +178,7 @@ export function rangeKeyFrom(item: any): string {
   throw new Error(`No range key available from ${typeof item}`);
 }
 
+/* @internal */
 export function createRangeKeyCondition(opts: IteratorOptions): DynamoDB.Types.Condition {
   const defaultStart = '\u0000';
   const defaultEnd = '\xff\xff\xff\xff\xff\xff\xff\xff';
@@ -221,17 +231,20 @@ export function createRangeKeyCondition(opts: IteratorOptions): DynamoDB.Types.C
   return result;
 }
 
+/* @internal */
 export function isBuffer(object: any): boolean {
   if (!object || typeof object !== 'object') return false;
   return Buffer.isBuffer(object) || (object.type === 'Buffer' && Array.isArray(object.data));
 }
 
+/* @internal */
 export function hexEncodeString(str: string): string {
   var hex = '';
   for (var pos = 0; pos < str.length; pos++) hex += String(str.charCodeAt(pos).toString(16));
   return hex;
 }
 
+/* @internal */
 export function castToBuffer(
   object: Buffer | Array<any> | string | boolean | number | null | undefined | object,
   encoding?: BufferEncoding
@@ -255,11 +268,15 @@ export function castToBuffer(
   return result;
 }
 
+/* @internal */
 export function isPlainObject(object: any): boolean {
   return typeof object === 'object' && object !== null && !Array.isArray(object) && !Buffer.isBuffer(object);
 }
 
+/* @internal */
 export const serialize = (value: any) => getTransformerOrThrow(value).toDb(value);
+
+/* @internal */
 export const deserialize = (value: any) => getTransformerOrThrow(value).fromDb(value);
 
 const getTransformerOrThrow = (value: any): ValueTransformer => {

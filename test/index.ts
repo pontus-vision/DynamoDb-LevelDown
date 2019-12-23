@@ -3,7 +3,7 @@ import levelup, { LevelUp } from 'levelup';
 import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
-import { DynamoDbDown } from '../dist/index';
+import { DynamoDbDown } from '../src/index';
 
 const suiteLevelSupports = require('level-supports/test');
 const suiteLevelDown = require('abstract-leveldown/test');

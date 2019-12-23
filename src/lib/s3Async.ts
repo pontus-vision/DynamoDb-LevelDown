@@ -2,6 +2,7 @@ import { S3 } from 'aws-sdk';
 import { promisify } from 'util';
 import { Attachment } from './types';
 
+/* @internal */
 export class S3Async {
   private headBucketAsync?: (params: S3.Types.HeadBucketRequest) => Promise<any>;
   private createBucketAsync?: (params: S3.Types.CreateBucketRequest) => Promise<S3.Types.CreateBucketOutput>;

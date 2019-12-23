@@ -5,6 +5,7 @@
     "Funcs",
     "corge",
     "dbot",
+    "dels",
     "dynalite",
     "esac",
     "foobase",
@@ -12,6 +13,7 @@
     "leveldown",
     "localstack",
     "posttest",
+    "savables",
     "tempbase",
     "testbuffer"
   ]

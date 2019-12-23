@@ -1,5 +1,5 @@
 import test from 'tape';
-import { Keys, AttachmentDefinition } from '../dist/lib/types';
+import { Keys, AttachmentDefinition } from '../src/lib/types';
 import {
   cloneObject,
   maybeDelay,
@@ -14,7 +14,7 @@ import {
   restoreAttachments,
   extractS3Pointers,
   promiseS3Body
-} from '../dist/lib/utils';
+} from '../src/lib/utils';
 
 /*
  * Basic sanity unit tests

@@ -1,8 +1,8 @@
 import test from 'tape';
 import { DynamoDB, S3 } from 'aws-sdk';
-import { DynamoDbDown } from '../dist/index';
-import { S3Async } from '../dist/lib/s3Async';
-import { extractAttachments, extractS3Pointers } from '../dist/lib/utils';
+import { DynamoDbDown } from '../src/index';
+import { S3Async } from '../src/lib/s3Async';
+import { extractAttachments, extractS3Pointers, cloneObject } from '../src/lib/utils';
 
 const AWSOptions = { region: 'us-east-1', accessKeyId: 'abc', secretAccessKey: '123', paramValidation: false };
 const DynamoDbOptions: DynamoDB.ClientConfiguration = {
@@ -122,12 +122,48 @@ test('s3', t => {
 
   t.test('setup', t => {
     db = leveldown('dynamo-s3');
-    t.end();
+    db.open(e => t.end(e));
   });
 
   t.test('attachment handling', t => {
-    db.open(e => {
-      t.notOk(e, 'database opened');
+    t.test('basic attachment saving', t => {
+      db.put(object._id, object, e => {
+        t.notOk(e, 'put object with data');
+
+        db.get(object._id, { asBuffer: false }, (e, v) => {
+          t.notOk(e, 'get object with data');
+          t.deepEqual(v, object, 'object with restored data');
+
+          t.end();
+        });
+      });
+    });
+
+    t.test('re-save with different attachments', t => {
+      const changedObject = cloneObject(object) as any;
+      changedObject._attachments = {
+        'meow2.png': {
+          content_type: 'image/png',
+          data:
+            'iVBORw0KGgoAAAANSUhEUgAAACgAAAAkCAIAAAB0Xu9BAAAABGdBTUEAALGPC/xhBQAAAuNJREFUWEetmD1WHDEQhDdxRMYlnBFyBIccgdQhKVcgJeQMpE5JSTd2uqnvIGpVUqmm9TPrffD0eLMzUn+qVnXPwiFd/PP6eLh47v7EaazbmxsOxjhTT88z9hV7GoNF1cUCvN7TTPv/gf/+uQPm862MWTL6fff4HfDx4S79/oVAlAUwqOmYR0rnazuFnhfOy/ErMKkcBFOr1vOjUi2MFn4nuMil6OPh5eGANLhW3y6u3aH7ijEDCxgCvzFmimvc95TekZLyMSeJC68Bkw0kqUy1K87FlpGZqsGFCyqEtQNDdFUtFctTiuhnPKNysid/WFEFLE2O102XJdEE+8IgeuGsjeJyGHm/xHvQ3JtKVsGGp85g9rK6xMHtvHO9+WACYjk5vkVM6XQ6OZubCJvTfPicYPeHO2AKFl5NuF5UK1VDUbeLxh2BcRGKTQE3irHm3+vPj6cfCod50Eqv5QxtwBQUGhZhbrGVuRia1B4MNp6edwBxld2sl1splfHCwfsvCZfrCQyWmX10djjOlWJSSy3VQlS6LmfrgNvaieRWx1LZ6s9co+P0DLsy3OdLU3lWRclQsVcHJBcUQ0k9/WVVrmpRzYQzpgAdQcAXxZzUnFX3proannrYH+Vq6KkLi+UkarH09mC8YPr2RMWOlEqFkQClsykGEv7CqCUbXcG8+SaGvJ4a8d4y6epND+pEhxoN0vWUu5ntXlFb5/JT7JfJJqoTdy9u9qc7ax3xJRHqJLADWEl23cFWl4K9fvoaCJ2BHpmJ3s3z+O0U/DmzdMjB9alWZtg4e3yxzPa7lUR7nkvxLHO9+tvJX3mtSDpwX8GajB283I8R8a7D2MhUZr1iNWdny256yYLd52DwRYBtRMvE7rsmtxIUE+zLKQCDO4jlxB6CZ8M17GhuY+XTE8vNhQiIiSE82ZsGwk1pht4ZSpT0YVpon6EvevOXXH8JxVR78QzNuamupW/7UB7wO/+7sG5V4ekXb4cL5Lyv+4IAAAAASUVORK5CYII='
+        }
+      };
+
+      db.put(changedObject._id, changedObject, e => {
+        t.notOk(e, 'put object with data');
+
+        db.get(changedObject._id, { asBuffer: false }, (e, v) => {
+          t.notOk(e, 'get object with data');
+          t.deepEqual(v, changedObject, 'object with restored data');
+
+          db.del(changedObject._id, e => t.end(e));
+        });
+      });
+    });
+
+    t.test('re-save with no attachments', t => {
+      const changedObject = cloneObject(object) as any;
+      changedObject._attachments = undefined;
 
       db.put(object._id, object, e => {
         t.notOk(e, 'put object with data');
@@ -136,10 +172,21 @@ test('s3', t => {
           t.notOk(e, 'get object with data');
           t.deepEqual(v, object, 'object with restored data');
 
-          db.del(object._id, e => t.end(e));
+          db.put(changedObject._id, changedObject, e => {
+            t.notOk(e, 'put object with data');
+
+            db.get(changedObject._id, { asBuffer: false }, (e, v) => {
+              t.notOk(e, 'get object with data');
+              t.deepEqual(v, changedObject, 'object with restored data');
+
+              db.del(changedObject._id, e => t.end(e));
+            });
+          });
         });
       });
     });
+
+    t.end();
   });
 
   t.test('destroy', t => {
@@ -178,28 +225,33 @@ test('s3 no-op', async t => {
   t.end();
 });
 
-test('s3 `createBucket`/`bucketExists` sequence', async t => {
-  const s3 = new S3Async(new S3(S3Options), `bucket-${Date.now()}`);
+test('s3 bucket management', t => {
+  t.test('s3 `createBucket`/`bucketExists` sequence', async t => {
+    const s3 = new S3Async(new S3(S3Options), `bucket-${Date.now()}`);
 
-  t.true(await s3.createBucket(), '`createBucket` => `true`');
-  t.true(await s3.bucketExists(), '`bucketExists` => `true`');
+    t.true(await s3.createBucket(), '`createBucket` => `true`');
+    t.true(await s3.bucketExists(), '`bucketExists` => `true`');
+    t.true(await s3.deleteBucket(), '`deleteBucket` => `true`');
 
-  t.end();
-});
+    t.end();
+  });
 
-test('s3 `createBucket` failure', async t => {
-  const s3 = new S3Async(
-    new S3({
-      ...S3Options,
-      endpoint: 'http://invalid:666',
-      maxRetries: 0,
-      retryDelayOptions: { base: 0, customBackoff: () => 0 },
-      httpOptions: { connectTimeout: 250, timeout: 250 }
-    }),
-    `bucket-${Date.now()}`
-  );
+  t.test('s3 `createBucket` offline failure', async t => {
+    const s3 = new S3Async(
+      new S3({
+        ...S3Options,
+        endpoint: 'http://invalid:666',
+        maxRetries: 0,
+        retryDelayOptions: { base: 0, customBackoff: () => 0 },
+        httpOptions: { connectTimeout: 250, timeout: 250 }
+      }),
+      `bucket-${Date.now()}`
+    );
 
-  t.false(await s3.createBucket(), '`createBucket` => `false`');
+    t.false(await s3.createBucket(), '`createBucket` => `false`');
+
+    t.end();
+  });
 
   t.end();
 });

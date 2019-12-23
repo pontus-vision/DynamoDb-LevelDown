@@ -3,7 +3,7 @@
   "description": "A LevelDOWN API implementation of AWS DynamoDB.",
   "main": "dist/index.js",
   "scripts": {
-    "pretest": "tsc",
+    "pretest": "tsc && cp -R ./types ./dist/lib/types",
     "test": "./test.sh",
     "posttest": "./testPost.sh"
   },

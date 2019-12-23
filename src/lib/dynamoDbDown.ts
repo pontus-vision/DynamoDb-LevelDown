@@ -8,7 +8,9 @@ import {
   ErrorValueCallback,
   AbstractBatch,
   AbstractIteratorOptions,
-  AbstractIterator
+  AbstractIterator,
+  PutBatch,
+  DelBatch
 } from 'abstract-leveldown';
 import supports, { SupportManifest } from 'level-supports';
 
@@ -122,8 +124,13 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _put(key: any, value: any, options: AbstractOptions, cb: ErrorCallback) {
     try {
-      const newValue = await DynamoS3.maybeSave(key, value, this.s3Async, this.s3AttachmentDefs);
-      await this.dynamoDbAsync.put(key, newValue);
+      const newValues = await DynamoS3.syncS3(
+        [{ key, value }],
+        this.dynamoDbAsync,
+        this.s3Async,
+        this.s3AttachmentDefs
+      );
+      await this.dynamoDbAsync.put(key, newValues[0]);
       cb(undefined);
     } catch (e) {
       cb(e);
@@ -146,7 +153,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _del(key: any, options: AbstractOptions, cb: ErrorCallback) {
     try {
-      await DynamoS3.maybeDelete(key, this.dynamoDbAsync, this.s3Async);
+      await DynamoS3.maybeDelete([key], this.dynamoDbAsync, this.s3Async);
       await this.dynamoDbAsync.delete(key);
       cb(undefined);
     } catch (e) {
@@ -156,8 +163,20 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _batch(array: ReadonlyArray<AbstractBatch<any, any>>, options: AbstractOptions, cb: ErrorCallback) {
     try {
-      // TODO: Wire-up S3 support for batch operations
-      await this.dynamoDbAsync.batch(array);
+      const ops = array.reduce(
+        (p, c) => ({
+          puts: c.type === 'put' ? p.puts.concat(c) : p.puts,
+          dels: c.type === 'del' ? p.dels.concat(c) : p.dels
+        }),
+        { puts: new Array<PutBatch>(), dels: new Array<DelBatch>() }
+      );
+
+      const delKeys = ops.dels.map(d => d.key);
+      await Promise.all([
+        DynamoS3.maybeDelete(delKeys, this.dynamoDbAsync, this.s3Async),
+        DynamoS3.syncS3(ops.puts, this.dynamoDbAsync, this.s3Async, this.s3AttachmentDefs)
+      ]);
+      await this.dynamoDbAsync.batch((ops.puts as DynamoTypes.BatchItem[]).concat(ops.dels));
       cb(undefined);
     } catch (e) {
       cb(e);

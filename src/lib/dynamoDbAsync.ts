@@ -2,7 +2,7 @@ import { promisify } from 'util';
 import { DynamoDB } from 'aws-sdk';
 import { WaiterConfiguration } from 'aws-sdk/lib/service';
 
-import { serialize, dataFromItem, rangeKeyFrom } from './utils';
+import { serialize, dataFromItem, rangeKeyFrom, withoutKeys } from './utils';
 import { BatchItem, Keys, BillingMode } from './types';
 
 const MAX_BATCH_SIZE = 25;
@@ -12,6 +12,7 @@ const defaultProvisionedThroughput = {
   WriteCapacityUnits: 5
 };
 
+/* @internal */
 export class DynamoDbAsync {
   private queryAsync: (params: DynamoDB.Types.QueryInput) => Promise<DynamoDB.Types.QueryOutput>;
   private waitForAsync: (
@@ -29,6 +30,7 @@ export class DynamoDbAsync {
   private batchWriteItemAsync: (
     params: DynamoDB.Types.BatchWriteItemInput
   ) => Promise<DynamoDB.Types.BatchWriteItemOutput>;
+  private batchGetItemAsync: (params: DynamoDB.Types.BatchGetItemInput) => Promise<DynamoDB.Types.BatchGetItemOutput>;
 
   constructor(
     private dynamoDb: DynamoDB,
@@ -47,6 +49,7 @@ export class DynamoDbAsync {
     this.deleteTableAsync = promisify(this.dynamoDb.deleteTable).bind(this.dynamoDb);
     this.describeTableAsync = promisify(this.dynamoDb.describeTable).bind(this.dynamoDb);
     this.batchWriteItemAsync = promisify(this.dynamoDb.batchWriteItem).bind(this.dynamoDb);
+    this.batchGetItemAsync = promisify(this.dynamoDb.batchGetItem).bind(this.dynamoDb);
   }
 
   private itemKey(key: string): { Key: DynamoDB.Key } {
@@ -86,6 +89,24 @@ export class DynamoDbAsync {
     const record = await this.getItemAsync(this.queryItem(key));
     if (!record || !record.Item) throw new Error('NotFound');
     return dataFromItem(record.Item);
+  }
+
+  async getBatch(keys: string[]) {
+    if (keys.length === 0) return {};
+    return await this.batchGetItemAsync({
+      RequestItems: {
+        [this.tableName]: {
+          Keys: keys.map(key => this.itemKey(key).Key)
+        }
+      }
+    }).then(result =>
+      (result.Responses ||
+        /* istanbul ignore next: technically optional but can't find case where `Responses` not present  */
+        {})[this.tableName].reduce(
+        (p, c) => ({ ...p, [rangeKeyFrom(c)]: withoutKeys(c) }),
+        {} as { [key: string]: any }
+      )
+    );
   }
 
   async put(key: string, value: any) {
