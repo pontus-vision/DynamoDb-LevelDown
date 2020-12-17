@@ -8,17 +8,19 @@ import {
   AttachmentResult,
   S3Pointers,
   S3ObjectBatch,
-  ExtractionItem
+  ExtractionItem,
 } from './types';
 import { deserialize } from './serialize';
+import { cloneDeep } from 'lodash';
 
 const createS3Pointer = (key: string): S3Pointer => ({ _s3key: key });
 const buildKeyPath = (parent?: string, current?: string) =>
-  [parent, current].filter(v => !!v && v.length > 0).join('/');
+  [parent, current].filter((v) => !!v && v.length > 0).join('/');
 
 /* @internal */
 export function promiseS3Body(input: { Body?: S3.Body }): S3.Body {
-  return input.Body || Buffer.alloc(0);
+  if (!!input.Body) return input.Body;
+  else return Buffer.alloc(0);
 }
 
 /* @internal */
@@ -33,25 +35,25 @@ export function extractAttachments(key: any, value: any, definitions: Attachment
         result.length !==
         result.push(
           ...definitions
-            .filter(d => d.match.test(entry.keyPath))
-            .map(def => {
+            .filter((d) => d.match.test(entry.keyPath))
+            .map((def) => {
               entry.parent[entry.key] = createS3Pointer(entry.keyPath);
               return {
                 key: entry.keyPath,
                 data: castToBuffer(entry.value[def.dataKey], def.dataEncoding),
-                contentType: entry.value[def.contentTypeKey]
+                contentType: entry.value[def.contentTypeKey],
               };
             })
         );
       const relevant = Object.keys(entry.value).filter(
-        k => isMatch === false && !!entry.value[k] && isPlainObject(entry.value[k])
+        (k) => isMatch === false && !!entry.value[k] && isPlainObject(entry.value[k])
       );
       flattened.push(
-        ...relevant.map(k => ({
+        ...relevant.map((k) => ({
           key: k,
           parent: entry.value,
           value: entry.value[k],
-          keyPath: buildKeyPath(entry.keyPath, k)
+          keyPath: buildKeyPath(entry.keyPath, k),
         }))
       );
     } while (flattened.length > 0);
@@ -67,14 +69,14 @@ export function extractS3Pointers(key: any, value: any): S3Pointers {
     const flattened: ExtractionItem[] = [{ key, keyPath: key, value }];
     do {
       const entry = flattened.shift() as ExtractionItem;
-      const relevant = Object.keys(entry.value).filter(k => !!entry.value[k] && isPlainObject(entry.value[k]));
+      const relevant = Object.keys(entry.value).filter((k) => !!entry.value[k] && isPlainObject(entry.value[k]));
       result = relevant
-        .filter(k => entry.value[k].hasOwnProperty(Keys.S3_KEY))
+        .filter((k) => entry.value[k].hasOwnProperty(Keys.S3_KEY))
         .reduce((result, key) => ({ ...result, [buildKeyPath(entry.keyPath, key)]: entry.value[key] }), result);
       flattened.push(
         ...relevant
-          .filter(k => !entry.value[k].hasOwnProperty(Keys.S3_KEY))
-          .map(key => ({ key, keyPath: buildKeyPath(entry.keyPath, key), value: entry.value[key] }))
+          .filter((k) => !entry.value[k].hasOwnProperty(Keys.S3_KEY))
+          .map((key) => ({ key, keyPath: buildKeyPath(entry.keyPath, key), value: entry.value[key] }))
       );
     } while (flattened.length > 0);
     return result;
@@ -92,10 +94,10 @@ export function restoreAttachments(
   if (!value || !pointers || !attachments) return value;
   const newValue = cloneObject(value);
   return Object.keys(pointers)
-    .map(keyPath =>
+    .map((keyPath) =>
       definitions
-        .filter(d => d.match.test(keyPath))
-        .map(definition => {
+        .filter((d) => d.match.test(keyPath))
+        .map((definition) => {
           keyPath
             .split('/')
             .slice(1)
@@ -104,44 +106,31 @@ export function restoreAttachments(
                 i === a.length - 1
                   ? {
                       [definition.contentTypeKey]: attachments[p[c]._s3key].ContentType,
-                      [definition.dataKey]: promiseS3Body(attachments[p[c]._s3key]).toString(definition.dataEncoding)
+                      [definition.dataKey]: promiseS3Body(attachments[p[c]._s3key]).toString(definition.dataEncoding),
                     }
                   : p[c];
               return p[c];
             }, newValue);
           return newValue;
         })
-        .reduce(p => p, newValue)
+        .reduce((p) => p, newValue)
     )
-    .reduce(p => p, newValue);
+    .reduce((p) => p, newValue);
 }
 
 /* @internal */
 export function cloneObject<T>(obj: T): T {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  } else if (isBuffer(obj)) {
-    const newBuffer = Buffer.alloc(((obj as unknown) as Buffer).length);
-    ((obj as unknown) as Buffer).copy(newBuffer);
-    return (newBuffer as unknown) as T;
-  }
-
-  const temp = Object.create(<Object>obj);
-  for (const key in obj) {
-    temp[key] = cloneObject(obj[key]);
-  }
-  return <T>temp;
+  return cloneDeep(obj) as T;
 }
 
 /* @internal */
 export function withoutKeys<T extends DynamoDB.ItemCollectionKeyAttributeMap>(item: T): T {
   if (!item) return item;
 
-  const newItem = <any>cloneObject(item);
+  const newItem = cloneObject(item);
   const delProps = [Keys.HASH_KEY, Keys.RANGE_KEY];
   if (isPlainObject(newItem)) {
-    Reflect.setPrototypeOf(newItem, null);
-    delProps.forEach(k => {
+    delProps.forEach((k) => {
       Reflect.set(newItem, k, undefined);
       Reflect.deleteProperty(newItem, k);
     });
@@ -154,9 +143,9 @@ export function keyConditionsFor(hashKey: string, rangeCondition: DynamoDB.Condi
   return {
     [Keys.HASH_KEY]: {
       ComparisonOperator: 'EQ',
-      AttributeValueList: [{ S: hashKey }]
+      AttributeValueList: [{ S: hashKey }],
     },
-    [Keys.RANGE_KEY]: rangeCondition
+    [Keys.RANGE_KEY]: rangeCondition,
   };
 }
 
@@ -188,44 +177,44 @@ export function createRangeKeyCondition(opts: IteratorOptions): DynamoDB.Types.C
   if (opts.gt && opts.lt) {
     result = {
       ComparisonOperator: 'BETWEEN',
-      AttributeValueList: [{ S: opts.gt }, { S: opts.lt }]
+      AttributeValueList: [{ S: opts.gt }, { S: opts.lt }],
     };
   } else if (opts.lt) {
     result = {
       ComparisonOperator: 'LT',
-      AttributeValueList: [{ S: opts.lt }]
+      AttributeValueList: [{ S: opts.lt }],
     };
   } else if (opts.gt) {
     result = {
       ComparisonOperator: 'GT',
-      AttributeValueList: [{ S: opts.gt }]
+      AttributeValueList: [{ S: opts.gt }],
     };
   } else if (!opts.start && !opts.end) {
     result = {
       ComparisonOperator: 'BETWEEN',
-      AttributeValueList: [{ S: defaultStart }, { S: defaultEnd }]
+      AttributeValueList: [{ S: defaultStart }, { S: defaultEnd }],
     };
   } else if (!opts.end) {
     const op = opts.reverse ? 'LE' : 'GE';
     result = {
       ComparisonOperator: op,
-      AttributeValueList: [{ S: opts.start }]
+      AttributeValueList: [{ S: opts.start }],
     };
   } else if (!opts.start) {
     const op = opts.reverse ? 'GE' : 'LE';
     result = {
       ComparisonOperator: op,
-      AttributeValueList: [{ S: opts.end }]
+      AttributeValueList: [{ S: opts.end }],
     };
   } else if (opts.reverse) {
     result = {
       ComparisonOperator: 'BETWEEN',
-      AttributeValueList: [{ S: opts.end }, { S: opts.start }]
+      AttributeValueList: [{ S: opts.end }, { S: opts.start }],
     };
   } else {
     result = {
       ComparisonOperator: 'BETWEEN',
-      AttributeValueList: [{ S: opts.start }, { S: opts.end }]
+      AttributeValueList: [{ S: opts.start }, { S: opts.end }],
     };
   }
 

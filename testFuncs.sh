@@ -6,6 +6,8 @@ if [ "$DOCKER_PATH" == "" ]; then
   exit 1
 fi
 
+LOCALSTACK_EDGE_PORT=4566
+
 IFS=''
 
 function readDockerContainerState() {

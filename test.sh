@@ -14,7 +14,7 @@ function startDockerContainers() {
 
   case "$LOCALSTACK_STATUS" in
   "")
-    LOCALSTACK_ID=$(docker run --name $LOCALSTACK_NAME -t -d -P localstack/localstack:latest)
+    LOCALSTACK_ID=$(docker run --name $LOCALSTACK_NAME -e LOCALSTACK_SERVICES="$LOCALSTACK_SERVICES" -t -d -P localstack/localstack:latest)
     echo "Created '${LOCALSTACK_ID:0:12}' running as '$LOCALSTACK_NAME'"
     ;;
   "exited")
@@ -31,13 +31,14 @@ function startDockerContainers() {
 
 if [ "$CI" == "true" ]; then
   echo "Testing under CI"
-  export S3_PORT=4572
-  export DYNAMODB_PORT=4569
+  export S3_PORT=$LOCALSTACK_EDGE_PORT
+  export DYNAMODB_PORT=$LOCALSTACK_EDGE_PORT
 else
   echo "NOT testing under CI"
   startDockerContainers
-  export S3_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4572/tcp") 0).HostPort}}' $LOCALSTACK_ID)
-  export DYNAMODB_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4569/tcp") 0).HostPort}}' $LOCALSTACK_ID)
+  EDGE_PORT=$(docker inspect --format='{{(index (index .NetworkSettings.Ports "4566/tcp") 0).HostPort}}' $LOCALSTACK_ID)
+  export S3_PORT=$EDGE_PORT
+  export DYNAMODB_PORT=$EDGE_PORT
 fi
 
 echo "S3 is at http://localhost:$S3_PORT"
