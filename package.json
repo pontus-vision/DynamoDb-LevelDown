@@ -32,26 +32,29 @@
     "node": ">=8"
   },
   "dependencies": {
-    "aws-sdk": "^2.589.0",
-    "abstract-leveldown": "^6.2.2",
+    "abstract-leveldown": "^6.3.0",
+    "aws-sdk": "^2.812.0",
     "level-supports": "^1.0.1",
-    "through2": "^3.0.1"
+    "lodash": "^4.17.20",
+    "through2": "^4.0.2"
   },
   "devDependencies": {
-    "@istanbuljs/nyc-config-typescript": "^0.1.3",
+    "@istanbuljs/nyc-config-typescript": "^1.0.1",
     "@types/abstract-leveldown": "^5.0.1",
+    "@types/aws-sdk": "^2.7.0",
     "@types/levelup": "^4.3.0",
-    "@types/tape": "^4.2.33",
-    "@types/through2": "^2.0.34",
+    "@types/lodash": "^4.14.165",
+    "@types/tape": "^4.13.0",
+    "@types/through2": "^2.0.36",
     "faucet": "^0.0.1",
-    "levelup": "^4.3.2",
-    "nyc": "^14.1.1",
-    "semantic-release": "^15.13.31",
-    "source-map-support": "^0.5.16",
-    "tap-junit": "^3.1.0",
-    "tape": "^4.11.0",
-    "ts-node": "^8.5.4",
-    "typescript": "^3.7.3"
+    "levelup": "^4.4.0",
+    "nyc": "^15.1.0",
+    "semantic-release": "^17.3.0",
+    "source-map-support": "^0.5.19",
+    "tap-junit": "^4.0.0",
+    "tape": "^5.0.1",
+    "ts-node": "^9.1.1",
+    "typescript": "^4.1.3"
   },
   "release": {
     "branch": "master",

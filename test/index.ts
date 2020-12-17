@@ -13,7 +13,7 @@ const DynamoDbOptions: DynamoDB.ClientConfiguration = {
   accessKeyId: 'abc',
   secretAccessKey: '123',
   paramValidation: false,
-  endpoint: `http://localhost:${process.env.DYNAMODB_PORT}`
+  endpoint: `http://localhost:${process.env.DYNAMODB_PORT}`,
 };
 
 const dynamoDb = new DynamoDB(DynamoDbOptions);
@@ -42,27 +42,27 @@ const createTestOptions = () => {
     setUp,
     tearDown,
     factory,
-    test
+    test,
   };
 };
 
 /*
  * Long-running offline tests
  */
-test('offline long-running tests', t => {
-  t.test('destroy offline', t => {
+test('offline long-running tests', (t) => {
+  t.test('destroy offline', (t) => {
     const ddc: DynamoDB.ClientConfiguration = {
       ...DynamoDbOptions,
       endpoint: 'http://invalid:666',
       maxRetries: 0,
       retryDelayOptions: { base: 0, customBackoff: () => 0 },
-      httpOptions: { connectTimeout: 250, timeout: 250 }
+      httpOptions: { connectTimeout: 250, timeout: 250 },
     };
     const dbl = 'offlineBase';
     const ddb = new DynamoDB(ddc);
     const ddf = DynamoDbDown.factory(ddb);
     ddf(dbl);
-    ddf.destroy(dbl, e => {
+    ddf.destroy(dbl, (e) => {
       t.ok(e, 'got error');
       t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
       t.end();
@@ -73,21 +73,21 @@ test('offline long-running tests', t => {
 /*
  * Run select `leveldown` tests
  */
-test('destroyer', t => {
-  t.test('setup', t => {
+test('destroyer', (t) => {
+  t.test('setup', (t) => {
     leveldown('tempbase');
     t.end();
   });
 
-  t.test('destroy without opening', t => {
-    destroyer('tempbase', e => {
+  t.test('destroy without opening', (t) => {
+    destroyer('tempbase', (e) => {
       t.notOk(e, 'no error');
       t.end();
     });
   });
 
-  t.test('destroy without existing', t => {
-    destroyer('tempbase2', e => {
+  t.test('destroy without existing', (t) => {
+    destroyer('tempbase2', (e) => {
       t.ok(e, 'got error');
       t.equals((e || {}).message, 'NotFound', 'got NotFound error');
       t.end();
@@ -97,13 +97,13 @@ test('destroyer', t => {
   t.end();
 });
 
-test('factory options', t => {
-  t.test('default provisioning', t => {
+test('factory options', (t) => {
+  t.test('default provisioning', (t) => {
     const dynamoDown = DynamoDbDown.factory(dynamoDb, {
-      billingMode: DynamoDbDown.Types.BillingMode.PROVISIONED
+      billingMode: DynamoDbDown.Types.BillingMode.PROVISIONED,
     });
     const db = dynamoDown('fake_news');
-    db.open(e => {
+    db.open((e) => {
       t.notOk(e, 'creates/opens with default provisioning');
       t.end();
     });
@@ -112,39 +112,39 @@ test('factory options', t => {
   t.end();
 });
 
-test('leveldown', t => {
+test('leveldown', (t) => {
   let db: DynamoDbDown;
 
-  t.test('setup', t => {
+  t.test('setup', (t) => {
     db = leveldown('foobase42');
     t.end();
   });
 
-  t.test('alternate ProvisionedThroughput', t => {
+  t.test('alternate ProvisionedThroughput', (t) => {
     const ProvisionedThroughput = {
       ReadCapacityUnits: 5,
-      WriteCapacityUnits: 5
+      WriteCapacityUnits: 5,
     };
-    db.open({ dynamoOptions: { ProvisionedThroughput } }, e => {
+    db.open({ dynamoOptions: { ProvisionedThroughput } }, (e) => {
       t.notOk(e);
-      db.close(e => {
+      db.close((e) => {
         t.notOk(e);
         t.end();
       });
     });
   });
 
-  t.test('batch and iterate objects', t => {
-    db.open(e => {
+  t.test('batch and iterate objects', (t) => {
+    db.open((e) => {
       t.notOk(e);
 
-      const valueObject = { short: 'a and stout' };
+      const valueObject = { short: 'and stout' };
       db.batch(
         [
           { type: 'put', key: 'foo', value: { iam: 'a little teapot' } },
-          { type: 'put', key: 'bar', value: valueObject }
+          { type: 'put', key: 'bar', value: valueObject },
         ],
-        e => {
+        (e) => {
           t.notOk(e);
 
           const iterator = db.iterator({ keyAsBuffer: false, valueAsBuffer: false });
@@ -155,7 +155,7 @@ test('leveldown', t => {
             t.ok(v, 'got object value');
             t.deepEqual(v, valueObject, 'got same object value');
 
-            db.close(e => {
+            db.close((e) => {
               t.notOk(e);
               t.end();
             });
@@ -165,8 +165,8 @@ test('leveldown', t => {
     });
   });
 
-  t.test('underlying errors', t => {
-    db.open(e => {
+  t.test('underlying errors', (t) => {
+    db.open((e) => {
       t.notOk(e);
 
       let callCount = 0;
@@ -195,24 +195,24 @@ test('leveldown', t => {
         }
       };
 
-      db.put('foo', 'bar', e => {
+      db.put('foo', 'bar', (e) => {
         t.ok(e, 'put handles error');
-        db.del('foo', e => {
+        db.del('foo', (e) => {
           t.ok(e, 'del handles error');
-          db.batch([{ type: 'put', key: 'foo', value: 'bar' }], e => {
+          db.batch([{ type: 'put', key: 'foo', value: 'bar' }], (e) => {
             t.ok(e, 'batch handles error');
-            db.iterator().next(e => {
+            db.iterator().next((e) => {
               t.notOk(e, 'iterator handles `undefined` items');
-              db.iterator().next(e => {
+              db.iterator().next((e) => {
                 t.notOk(e, 'iterator handles `ResourceNotFoundException`');
-                db.iterator().next(e => {
+                db.iterator().next((e) => {
                   t.ok(e, 'iterator handles general error');
                   db.iterator({ gte: 5, lte: 2, reverse: false }).next((e, k, v) => {
                     t.notOk(e, 'iterator handles general error');
                     t.notOk(k, 'does not yield a key');
                     t.notOk(k, 'does not yield a value');
 
-                    db.close(e => {
+                    db.close((e) => {
                       t.notOk(e);
                       t.end();
                     });
@@ -226,14 +226,14 @@ test('leveldown', t => {
     });
   });
 
-  t.test('tearDown', t => destroyer('foobase42', e => t.end(e)));
+  t.test('tearDown', (t) => destroyer('foobase42', (e) => t.end(e)));
 
   t.end();
 });
 
-test('really deep error handling', t => {
+test('really deep error handling', (t) => {
   const db = leveldown('foobase42');
-  db.open(e => {
+  db.open((e) => {
     t.notOk(e);
 
     let callCount = 0;
@@ -244,8 +244,8 @@ test('really deep error handling', t => {
         const tableName = Object.keys(params.RequestItems).shift() as string;
         return {
           UnprocessedItems: {
-            [tableName]: params.RequestItems[tableName]
-          }
+            [tableName]: params.RequestItems[tableName],
+          },
         };
       } else return {};
     };
@@ -253,11 +253,11 @@ test('really deep error handling', t => {
     db.batch(
       [
         { type: 'put', key: 'foo', value: 'bar' },
-        { type: 'put', key: 'fiz', value: 'gig' }
+        { type: 'put', key: 'fiz', value: 'gig' },
       ],
-      e => {
+      (e) => {
         t.notOk(e);
-        db.close(e => {
+        db.close((e) => {
           t.notOk(e);
           t.equal(callCount, 2, 'unprocessed items retried');
           t.end();
@@ -270,18 +270,18 @@ test('really deep error handling', t => {
 /*
  *   Run select `levelup` tests
  */
-test('levelup', t => {
+test('levelup', (t) => {
   let db: LevelUp<DynamoDbDown>;
 
-  t.test('setup', t => {
+  t.test('setup', (t) => {
     db = levelup(dynamoDownFactory('foobase'));
     t.end();
   });
 
-  t.test('put string', t => {
-    db.put('name', 'LevelUP string', function(err) {
+  t.test('put string', (t) => {
+    db.put('name', 'LevelUP string', function (err) {
       t.notOk(err);
-      db.get('name', { asBuffer: false }, function(err, value) {
+      db.get('name', { asBuffer: false }, function (err, value) {
         t.notOk(err);
         t.equal(value, 'LevelUP string');
         t.end();
@@ -289,11 +289,11 @@ test('levelup', t => {
     });
   });
 
-  t.test('put binary', t => {
+  t.test('put binary', (t) => {
     const buffer = Buffer.from('testbuffer');
-    db.put('binary', buffer, function(err) {
+    db.put('binary', buffer, function (err) {
       t.notOk(err);
-      db.get('binary', { encoding: 'binary' }, function(err, value) {
+      db.get('binary', { encoding: 'binary' }, function (err, value) {
         t.notOk(err);
         t.deepEqual(value, buffer);
         t.end();
@@ -301,14 +301,14 @@ test('levelup', t => {
     });
   });
 
-  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
+  t.test('tearDown', (t) => destroyer('foobase', (e) => t.end(e)));
 
-  t.test('setup', t => {
+  t.test('setup', (t) => {
     db = levelup(dynamoDownFactory('foobase'), { valueEncoding: 'json' });
     t.end();
   });
 
-  t.test('put object', t => {
+  t.test('put object', (t) => {
     const object = {
       foo: 'bar',
       baz: 123,
@@ -318,12 +318,12 @@ test('levelup', t => {
         foo: 'bar',
         baz: 123,
         qux: true,
-        corge: [1, 2, 3, 4, 5]
-      }
+        corge: [1, 2, 3, 4, 5],
+      },
     };
-    db.put('object', object, { valueEncoding: 'json' }, function(err) {
+    db.put('object', object, { valueEncoding: 'json' }, function (err) {
       t.notOk(err);
-      db.get('object', { asBuffer: false }, function(err, value) {
+      db.get('object', { asBuffer: false }, function (err, value) {
         t.notOk(err);
         t.deepEqual(value, object);
         t.end();
@@ -331,7 +331,7 @@ test('levelup', t => {
     });
   });
 
-  t.test('tearDown', t => destroyer('foobase', e => t.end(e)));
+  t.test('tearDown', (t) => destroyer('foobase', (e) => t.end(e)));
 
   t.end();
 });

@@ -8,7 +8,7 @@ export const serialize = (value: any) => getTransformerOrThrow(value).toDb(value
 export const deserialize = (value: any) => getTransformerOrThrow(value).fromDb(value);
 
 const getTransformerOrThrow = (value: any): ValueTransformer => {
-  const transformer = TRANSFORMERS.find(transformer => transformer.for(value));
+  const transformer = TRANSFORMERS.find((transformer) => transformer.for(value));
   if (!transformer) throw new Error(`Transformer not available for '${typeof value}'`);
   return transformer;
 };
@@ -37,69 +37,72 @@ const transformMapFrom = (value: any): Array<any> => {
 };
 
 const transformMapTo = (value: Array<any>): Array<any> => {
-  return value.map(item => serialize(item));
+  return value.map((item) => serialize(item));
 };
 
 const TRANSFORMER_SPECIALS = {
   NaN: toBase64(Number.NaN.toString()),
   EmptyString: toBase64('EMPTY_STRING'),
-  EmptyBuffer: toBase64('EMPTY_BUFFER')
+  EmptyBuffer: toBase64('EMPTY_BUFFER'),
 };
 
 const TRANSFORMERS: ValueTransformer[] = [
   {
     for: (value: any) => value === null || value === undefined || dbotName(value) === 'NULL',
     toDb: () => ({ NULL: true }),
-    fromDb: () => undefined
+    fromDb: () => undefined,
   },
   {
+    // NaN - Not a number support
     for: (value: any) =>
       Number.isNaN(value) || (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.NaN),
     toDb: () => ({ B: TRANSFORMER_SPECIALS.NaN }),
-    fromDb: () => Number.NaN
+    fromDb: () => Number.NaN,
   },
   {
+    // Buffer(0) - Empty buffer support
     for: (value: any) =>
       (isBuffer(value) && value.length === 0) ||
       (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.EmptyBuffer),
     toDb: () => ({ B: TRANSFORMER_SPECIALS.EmptyBuffer }),
-    fromDb: () => Buffer.alloc(0)
+    fromDb: () => Buffer.alloc(0),
   },
   {
+    // String(0) - Empty string support
     for: (value: any) =>
       (ctorName(value) === 'String' && value.trim() === '') ||
       (dbotName(value) === 'B' && String(value.B) === TRANSFORMER_SPECIALS.EmptyString),
     toDb: () => ({ B: TRANSFORMER_SPECIALS.EmptyString }),
-    fromDb: () => ''
+    fromDb: () => '',
   },
   {
     for: (value: any) => ctorName(value) === 'String' || dbotName(value) === 'S',
     toDb: (value: any) => ({ S: value }),
-    fromDb: (value: any) => value.S
+    fromDb: (value: any) => value.S,
   },
   {
     for: (value: any) => ctorName(value) === 'Boolean' || dbotName(value) === 'BOOL',
     toDb: (value: any) => ({ BOOL: value }),
-    fromDb: (value: any) => value.BOOL
+    fromDb: (value: any) => value.BOOL,
   },
   {
     for: (value: any) => ctorName(value) === 'Number' || dbotName(value) === 'N',
     toDb: (value: any) => ({ N: String(value) }),
-    fromDb: (value: any) => Number(value.N)
+    fromDb: (value: any) => Number(value.N),
   },
   {
     for: (value: any) => isBuffer(value) || ctorName(value) === 'Buffer' || dbotName(value) === 'B',
     toDb: (value: any) => ({ B: value }),
-    fromDb: (value: any) => Buffer.from(value.B)
+    fromDb: (value: any) => Buffer.from(value.B),
   },
   {
     for: (value: any) => ctorName(value) === 'Array' || dbotName(value) === 'L',
     toDb: (value: any) => ({ L: transformMapTo(value) }),
-    fromDb: (value: any) => transformMapFrom(value.L)
+    fromDb: (value: any) => transformMapFrom(value.L),
   },
   {
     for: (value: any) => ctorName(value) === 'Object' || dbotName(value) === 'M',
     toDb: (value: any) => ({ M: transformReduce(value, serialize) }),
-    fromDb: (value: any) => transformReduce(value.M, deserialize)
-  }
+    fromDb: (value: any) => transformReduce(value.M, deserialize),
+  },
 ];

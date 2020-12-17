@@ -10,14 +10,14 @@ import {
   extractAttachments,
   restoreAttachments,
   extractS3Pointers,
-  promiseS3Body
+  promiseS3Body,
 } from '../src/lib/utils';
 
 /*
  * Basic sanity unit tests
  */
-test('utility tests', t => {
-  t.test('object cloning', t => {
+test('utility tests', (t) => {
+  t.test('object cloning', (t) => {
     class MyThing {
       foo: string = 'bar';
       fizz: string = 'gig';
@@ -26,18 +26,18 @@ test('utility tests', t => {
     }
     const obj1 = new MyThing();
     const obj2 = cloneObject(obj1);
-    t.deepEquals(obj2, obj1, 'object clones');
+    t.deepEqual(obj2, obj1, 'object clones');
     t.end();
   });
 
-  t.test('extractAttachments with top-level/parent-less match', t => {
+  t.test('extractAttachments with top-level/parent-less match', (t) => {
     const attachmentDefinitions: AttachmentDefinition[] = [
       {
         match: /.*/,
         dataKey: 'data',
         contentTypeKey: 'content_type',
-        dataEncoding: 'base64'
-      }
+        dataEncoding: 'base64',
+      },
     ];
     const input = { data: Buffer.from('bar'), content_type: 'text/plain' };
     const result = extractAttachments('foo', input, attachmentDefinitions);
@@ -49,8 +49,8 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('restoreAttachments', t => {
-    t.test('promiseS3Body', t => {
+  t.test('restoreAttachments', (t) => {
+    t.test('promiseS3Body', (t) => {
       const inputWith = { Body: Buffer.from('foo') };
       const inputWithout = { Body: undefined };
 
@@ -60,12 +60,12 @@ test('utility tests', t => {
 
       const resultWithout = promiseS3Body(inputWithout);
       t.ok(resultWithout, 'got value from `undefined`');
-      t.looseEqual(resultWithout, Buffer.alloc(0), 'got expected value from `undefined`');
+      t.equal(Buffer.alloc(0).compare(resultWithout as Buffer), 0, 'got expected value from `undefined`');
 
       t.end();
     });
 
-    t.test('restoreAttachments with `definitions` mismatch', t => {
+    t.test('restoreAttachments with `definitions` mismatch', (t) => {
       const input = { _id: 'foo', _attachments: { 'myImage.png': { _s3key: 'foo/_attachments/myImage.png' } } };
       const pointers = extractS3Pointers(input._id, input);
       const result = restoreAttachments(input, pointers, {}, []);
@@ -75,7 +75,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('restoreAttachments with `undefined` value', t => {
+    t.test('restoreAttachments with `undefined` value', (t) => {
       const input = undefined;
       const result = restoreAttachments(input, {}, {}, []);
 
@@ -85,26 +85,26 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('underlying key removal', t => {
-    t.test('success with undefined', t => {
+  t.test('underlying key removal', (t) => {
+    t.test('success with undefined', (t) => {
       const keyless = withoutKeys(<any>undefined);
       t.notOk(keyless, 'give undefined, get undefined');
 
       t.end();
     });
 
-    t.test('success with basic value', t => {
+    t.test('success with basic value', (t) => {
       const keyless = withoutKeys(<any>1);
       t.ok(keyless, 'get what we give');
 
       t.end();
     });
 
-    t.test('success with defined', t => {
+    t.test('success with defined', (t) => {
       const dbItem = {
         [Keys.HASH_KEY]: serialize('fake'),
         [Keys.RANGE_KEY]: serialize('news'),
-        [Keys.DATA_KEY]: serialize('everywhere')
+        [Keys.DATA_KEY]: serialize('everywhere'),
       };
       const keyless = withoutKeys(dbItem);
       t.notOk(keyless[Keys.HASH_KEY], 'has no hash key');
@@ -117,8 +117,8 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('range key acquisition', t => {
-    t.test('error with undefined', t => {
+  t.test('range key acquisition', (t) => {
+    t.test('error with undefined', (t) => {
       try {
         const key = rangeKeyFrom(undefined);
         t.notOk(key, 'got key from undefined');
@@ -131,7 +131,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('error with unsupported type', t => {
+    t.test('error with unsupported type', (t) => {
       try {
         const key = rangeKeyFrom({ foo: 'bar' });
         t.notOk(key, 'got key from unsupported');
@@ -144,7 +144,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('key from item directly', t => {
+    t.test('key from item directly', (t) => {
       const key = rangeKeyFrom({ [Keys.RANGE_KEY]: { S: 'foo' } });
       t.ok(key, 'any key found');
       t.equal(key, 'foo', 'correct key found');
@@ -152,7 +152,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('key from item with `Key`', t => {
+    t.test('key from item with `Key`', (t) => {
       const key = rangeKeyFrom({ Key: { [Keys.RANGE_KEY]: { S: 'foo' } } });
       t.ok(key, 'any key found');
       t.equal(key, 'foo', 'correct key found');
@@ -160,7 +160,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('key from item with `PutRequest.Item`', t => {
+    t.test('key from item with `PutRequest.Item`', (t) => {
       const key = rangeKeyFrom({ PutRequest: { Item: { [Keys.RANGE_KEY]: { S: 'foo' } } } });
       t.ok(key, 'any key found');
       t.equal(key, 'foo', 'correct key found');
@@ -168,7 +168,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('key from item with `DeleteRequest.Key`', t => {
+    t.test('key from item with `DeleteRequest.Key`', (t) => {
       const key = rangeKeyFrom({ DeleteRequest: { Key: { [Keys.RANGE_KEY]: { S: 'foo' } } } });
       t.ok(key, 'any key found');
       t.equal(key, 'foo', 'correct key found');
@@ -179,10 +179,10 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('buffer casting', t => {
+  t.test('buffer casting', (t) => {
     t.throws(() => castToBuffer(<any>(() => {})), /.*not supported.*/, 'throws correct error when unsupported');
 
-    t.test('null || undefined => Buffer(empty)', t => {
+    t.test('null || undefined => Buffer(empty)', (t) => {
       let output: Buffer | null = null;
 
       output = castToBuffer(null);
@@ -196,7 +196,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('Buffer => Buffer', t => {
+    t.test('Buffer => Buffer', (t) => {
       const input = Buffer.from('foo');
       const output = castToBuffer(input);
       t.equal(output, input, 'input and output buffers are equal');
@@ -204,7 +204,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('Array => Buffer', t => {
+    t.test('Array => Buffer', (t) => {
       const input = [10, 20, 30, 40, 55];
       const output = castToBuffer(input);
       t.ok(output, 'got buffer');
@@ -221,7 +221,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('String => Buffer', t => {
+    t.test('String => Buffer', (t) => {
       const input = 'foo';
       const output = castToBuffer(input);
       t.ok(output, 'got buffer from string');
@@ -230,7 +230,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('Number => Buffer', t => {
+    t.test('Number => Buffer', (t) => {
       const input = 50;
       const output = castToBuffer(input);
       t.ok(output, 'got buffer from number');
@@ -239,8 +239,8 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('Boolean => Buffer', t => {
-      [true, false].forEach(v => {
+    t.test('Boolean => Buffer', (t) => {
+      [true, false].forEach((v) => {
         const input = v;
         const output = castToBuffer(input);
         t.ok(output, 'got buffer from boolean');
@@ -249,7 +249,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('Object => Buffer', t => {
+    t.test('Object => Buffer', (t) => {
       const input = { iam: 'a teapot', short: 'and stout', here: 'is my handle', stamped: 42, alive: true };
       const output = castToBuffer(input);
       t.ok(output, 'got buffer from object');
@@ -261,9 +261,9 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('buffer detection', t => {
-    t.test('primitives are not buffers', t => {
-      [666, true, 'foo', new Date()].forEach(v => t.notOk(isBuffer(v), `'${typeof v}' is not a buffer`));
+  t.test('buffer detection', (t) => {
+    t.test('primitives are not buffers', (t) => {
+      [666, true, 'foo', new Date()].forEach((v) => t.notOk(isBuffer(v), `'${typeof v}' is not a buffer`));
       t.end();
     });
 
@@ -273,12 +273,12 @@ test('utility tests', t => {
     t.end();
   });
 
-  t.test('edge serialization', t => {
-    const func = function(foo: any) {
+  t.test('edge serialization', (t) => {
+    const func = function (foo: any) {
       return foo;
     };
 
-    t.test('cannot serialize function', t => {
+    t.test('cannot serialize function', (t) => {
       try {
         const result = serialize(func);
         t.notOk(result, 'function serialized');
@@ -290,7 +290,7 @@ test('utility tests', t => {
       }
     });
 
-    t.test('cannot deserialize function', t => {
+    t.test('cannot deserialize function', (t) => {
       try {
         const result = deserialize(func);
         t.notOk(result, 'function serialized');
@@ -302,17 +302,16 @@ test('utility tests', t => {
       }
     });
 
-    t.test('handles empty buffers', t => {
+    t.test('handles empty buffers', (t) => {
       const original = Buffer.alloc(0);
       const serializedBuffer = serialize(original);
       const deserializedBuffer = deserialize(serializedBuffer);
-      t.comment(`Buffer(0) => ${JSON.stringify(serializedBuffer)}`);
-      t.looseEqual(deserializedBuffer, original, 'deserialized empty buffer');
+      t.equal(deserializedBuffer.compare(original), 0, 'deserialized empty buffer');
 
       t.end();
     });
 
-    t.test('handles null', t => {
+    t.test('handles null', (t) => {
       const input = null;
       const serialized = serialize(input);
       const deserialized = deserialize(serialized);
@@ -321,7 +320,7 @@ test('utility tests', t => {
       t.end();
     });
 
-    t.test('handles undefined', t => {
+    t.test('handles undefined', (t) => {
       const input = undefined;
       const serialized = serialize(input);
       const deserialized = deserialize(serialized);

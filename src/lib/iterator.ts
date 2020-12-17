@@ -13,7 +13,7 @@ import {
   dataFromItem,
   rangeKeyFrom,
   keyConditionsFor,
-  createRangeKeyCondition
+  createRangeKeyCondition,
 } from './utils';
 
 const EVENT_END = 'end';
@@ -99,7 +99,7 @@ export class DynamoDbIterator extends AbstractIterator {
     this.seekTarget = !!target && isBuffer(target) ? target.toString() : target;
   }
 
-  private async peekNextKey(): Promise<string> {
+  private async peekNextKey(): Promise<string | undefined> {
     const onPushNext = (next: SimpleItem, resolve: (value?: SimpleItem) => void) => {
       this.results.removeListener(EVENT_END, onEnd);
       resolve(next);
@@ -108,7 +108,7 @@ export class DynamoDbIterator extends AbstractIterator {
       this.results.removeListener(EVENT_PUSHED, onPushNext);
       resolve(undefined);
     };
-    const next = await new Promise<SimpleItem>((resolve, reject) => {
+    const next = await new Promise<SimpleItem | undefined>((resolve, reject) => {
       const next = this.readStream();
       if (next) {
         this.results.unshift(next);
@@ -134,7 +134,7 @@ export class DynamoDbIterator extends AbstractIterator {
       low: options.gt || options.gte || start,
       high: options.lt || options.lte || end,
       inclusiveLow: !options.gt,
-      inclusiveHigh: !options.lt
+      inclusiveHigh: !options.lt,
     };
   }
 
@@ -179,7 +179,7 @@ export class DynamoDbIterator extends AbstractIterator {
       stream.emit(EVENT_PUSHED, output);
     };
 
-    const stream = through2.obj(async function(data, enc, cb) {
+    const stream = through2.obj(async function (data, enc, cb) {
       returnCount += 1;
       pushNext(this, { key: rangeKeyFrom(data), value: withoutKeys(data.value) });
       if (isFinished()) {
@@ -195,7 +195,7 @@ export class DynamoDbIterator extends AbstractIterator {
         return stream;
       }
 
-      data.Items.forEach(item => {
+      data.Items.forEach((item) => {
         const rangeKey = rangeKeyFrom(item);
         const filtered = (opts.gt && !(rangeKey > opts.gt)) || (opts.lt && !(rangeKey < opts.lt));
         if (!filtered) {
@@ -248,12 +248,12 @@ export class DynamoDbIterator extends AbstractIterator {
       KeyConditions: keyConditionsFor(this.hashKey, rangeCondition),
       Limit: opts.limit && opts.limit >= 0 ? opts.limit : undefined,
       ScanIndexForward: !opts.reverse,
-      ExclusiveStartKey: opts.lastKey
+      ExclusiveStartKey: opts.lastKey,
     };
 
     try {
       const records = await this.dynamoDb.query(params);
-      records.Items?.forEach(item => (item.value = dataFromItem(item)));
+      records.Items?.forEach((item) => (item.value = dataFromItem(item)));
       cb(undefined, records);
     } catch (err) {
       cb(err);
