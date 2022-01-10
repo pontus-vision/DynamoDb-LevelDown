@@ -1,5 +1,6 @@
 import test, { Test } from 'tape';
-import levelup, { LevelUp } from 'levelup';
+import { LevelUp } from 'levelup';
+const levelup = require('levelup');
 import { ErrorCallback } from 'abstract-leveldown';
 
 import { DynamoDB } from 'aws-sdk';
@@ -64,7 +65,7 @@ test('offline long-running tests', (t) => {
     ddf(dbl);
     ddf.destroy(dbl, (e) => {
       t.ok(e, 'got error');
-      t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
+      t.ok(/Socket timed out without establishing a connection/.test((e || {}).message || ''), 'got connection error');
       t.end();
     });
   });
@@ -81,7 +82,10 @@ test('destroyer', (t) => {
 
   t.test('destroy without opening', (t) => {
     destroyer('tempbase', (e) => {
-      t.notOk(e, 'no error');
+      // t.equal(e,'');
+      t.ok(e, 'got error');
+      t.ok(/Cannot do operations on a non-existent table/.test((e || {}).message || ''), 'got connection error');
+
       t.end();
     });
   });

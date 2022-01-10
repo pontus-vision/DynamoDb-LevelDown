@@ -12,7 +12,9 @@ import {
   PutBatch,
   DelBatch
 } from 'abstract-leveldown';
-import supports, { SupportManifest } from 'level-supports';
+// import supports, { SupportManifest } from 'level-supports';
+import {supports as suppFunc, IManifest } from 'level-supports';
+// const supports = require ('level-supports');
 
 import { DynamoDbIterator } from './iterator';
 import { DynamoDbAsync } from './dynamoDbAsync';
@@ -21,8 +23,9 @@ import { isBuffer } from './utils';
 import { S3Async } from './s3Async';
 import { DynamoS3 } from './dynamoS3';
 
-const manifest: SupportManifest = {
-  bufferKeys: true,
+
+const manifest: IManifest = {
+  // bufferKeys: true,
   snapshots: true,
   permanence: true,
   seek: true,
@@ -31,13 +34,28 @@ const manifest: SupportManifest = {
   createIfMissing: true,
   errorIfExists: true,
   deferredOpen: true,
-  openCallback: true,
+  // openCallback: true,
   promises: true,
   streams: true,
-  encodings: true
+  encodings: { utf8: true, json: true },
+  getMany: true,
+  keyIterator: true,
+  iteratorAll:true,
+  additionalMethods: {},
+  events: {},
+  iteratorNextv: true,
+  valueIterator: true
+
 };
 
 const globalStore: { [location: string]: DynamoDbDown } = {};
+
+export interface DynamoDBDownFactory {
+
+  destroy: (location: string, cb: ErrorCallback)=>Promise<void>;
+  (location:string):DynamoDbDown
+
+}
 
 export class DynamoDbDown extends AbstractLevelDOWN {
   private hashKey: string;
@@ -60,12 +78,12 @@ export class DynamoDbDown extends AbstractLevelDOWN {
     this.dynamoDbAsync = new DynamoDbAsync(dynamoDb, this.tableName, this.hashKey, useConsistency, billingMode);
   }
 
-  static factory(dynamoDb: DynamoDB, options?: DynamoDbDown.Types.Options) {
-    const func = function(location: string) {
+  static factory(dynamoDb: DynamoDB, options?: DynamoDbDown.Types.Options):DynamoDBDownFactory {
+    const func = (location: string):DynamoDbDown => {
       globalStore[location] = globalStore[location] || new DynamoDbDown(dynamoDb, location, options);
       return globalStore[location];
     };
-    func.destroy = async function(location: string, cb: ErrorCallback) {
+    func.destroy = async (location: string, cb: ErrorCallback):Promise<void> => {
       const store = globalStore[location];
       if (!store) return cb(new Error('NotFound'));
 
@@ -74,17 +92,17 @@ export class DynamoDbDown extends AbstractLevelDOWN {
         Reflect.deleteProperty(globalStore, location);
         return cb(undefined);
       } catch (e) {
-        if (e && e.code === 'ResourceNotFoundException') {
+        if (e && (e as Error)?.message === 'ResourceNotFoundException') {
           Reflect.deleteProperty(globalStore, location);
           return cb(undefined);
         }
-        return cb(e);
+        return cb(e as Error);
       }
     };
     return func;
   }
 
-  readonly supports = supports(manifest);
+  readonly supports =  suppFunc(manifest);
 
   async _close(cb: ErrorCallback) {
     cb(undefined);
@@ -118,7 +136,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       }
       cb(undefined);
     } catch (e) {
-      cb(e);
+      cb(e as Error);
     }
   }
 
@@ -133,7 +151,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       await this.dynamoDbAsync.put(key, newValues[0]);
       cb(undefined);
     } catch (e) {
-      cb(e);
+      cb(e as Error);
     }
   }
 
@@ -147,7 +165,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       }
       cb(undefined, output);
     } catch (e) {
-      cb(e, undefined);
+      cb(e as Error, undefined);
     }
   }
 
@@ -157,7 +175,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       await this.dynamoDbAsync.delete(key);
       cb(undefined);
     } catch (e) {
-      cb(e);
+      cb(e as Error);
     }
   }
 
@@ -179,7 +197,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       await this.dynamoDbAsync.batch((ops.puts as DynamoTypes.BatchItem[]).concat(ops.dels));
       cb(undefined);
     } catch (e) {
-      cb(e);
+      cb(e as Error);
     }
   }
 

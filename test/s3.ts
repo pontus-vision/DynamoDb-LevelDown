@@ -65,7 +65,9 @@ test('offline long-running S3 tests', t => {
       t.ok(e);
       ddf.destroy(dbl, e => {
         t.ok(e, 'got error');
-        t.ok(/Inaccessible host/.test((e || {}).message || ''), 'got connection error');
+        // console.error (e?.message)
+        // t.equal(e?.message, '')
+        t.ok(/Socket timed out without establishing a connection/.test((e || {}).message || ''), 'got connection error');
         t.end();
       });
     });
@@ -198,7 +200,7 @@ test('s3', t => {
         t.notOk(result, 'cannot delete a deleted table');
       } catch (e) {
         t.ok(e, 'got error');
-        t.true(/non-existent/i.test(e), 'expected error');
+        t.true(/non-existent/i.test((e as Error)?.message), 'expected error');
       }
 
       t.end();

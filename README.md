@@ -4,18 +4,17 @@
 
 A [LevelDOWN](https://github.com/level/leveldown) API implementation of [Amazon DynamoDB](https://aws.amazon.com/dynamodb/).
 
-Originally forked from [Ten Bitcomb's AWSDOWN](https://github.com/Ravenstine/awsdown) which forked from [Klaus Trainer's DynamoDbDown](https://github.com/KlausTrainer/dynamodbdown) which was "heavily inspired by" [David Guttman's DynamoDown](https://github.com/davidguttman/dynamodown) and [Jed Schmidt's dynamo-down](https://github.com/jed/dynamo-down)
+Originally forked from [GioCirque/DynamoDb-LevelDown](https://github.com/GioCirque/DynamoDb-LevelDown), which was forked from [Ten Bitcomb's AWSDOWN](https://github.com/Ravenstine/awsdown) which forked from [Klaus Trainer's DynamoDbDown](https://github.com/KlausTrainer/dynamodbdown) which was "heavily inspired by" [David Guttman's DynamoDown](https://github.com/davidguttman/dynamodown) and [Jed Schmidt's dynamo-down](https://github.com/jed/dynamo-down)
 
 This is a drop-in replacement for [LevelDOWN](https://github.com/level/leveldown) that uses [Amazon DynamoDB](https://aws.amazon.com/dynamodb/) for persistence. It can be used as a backend for [LevelUP](https://github.com/level/levelup) rather than an actual LevelDB store.
 
 As of version 0.7, [LevelUP](https://github.com/level/levelup) allows you to pass a `db` option when you create a new instance. This will override the default [LevelDOWN](https://github.com/level/leveldown) store with a [LevelDOWN](https://github.com/level/leveldown) API compatible object. `DynamoDbDown` conforms exactly to the [LevelDOWN](https://github.com/level/leveldown) API, but performs operations against a DynamoDB database.
 
 ## Why?
-
 The intended use case for this library is with [PouchDB](https://github.com/pouchdb/pouchdb). Compatibility with [PouchDB](https://github.com/pouchdb/pouchdb) is a big win in this case since it provides a common JavaScript interface for interacting with documents as well as _full replication_, including attachments of any size. Using this [LevelDOWN](https://github.com/level/leveldown) implementation with [PouchDB](https://github.com/pouchdb/pouchdb) can be useful for regular backups as well as migrating data to CouchDB.
 
 ## Why the fork?
-
+Updating the original project's dependencies to LevelDB 7.x.  The original project did not have any updates for 13 months...
 Other similar implementation have become old, stale, and don't appear to be maintained any more. This fork has updated all dependencies, and runs [LevelUP](https://github.com/level/levelup) and [LevelDOWN](https://github.com/level/leveldown) automated tests to help ensure quality.
 
 ## Usage Example
