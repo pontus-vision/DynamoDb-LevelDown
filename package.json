@@ -18,9 +18,9 @@
     "Leo Martins <lmartins@pontusvision.com"
   ],
   "files": [
-   "dist",
-   "package.json",
-   "yarn.lock"
+    "dist",
+    "package.json",
+    "yarn.lock"
   ],
   "license": "Apache-2.0",
   "keywords": [
@@ -104,5 +104,5 @@
       "@semantic-release/npm"
     ]
   },
-  "version": "3.2.2"
+  "version": "3.2.3"
 }
