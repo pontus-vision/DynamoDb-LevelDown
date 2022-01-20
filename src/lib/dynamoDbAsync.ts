@@ -1,5 +1,5 @@
 import { promisify } from 'util';
-import { DynamoDB } from 'aws-sdk';
+import { AWSError, DynamoDB } from 'aws-sdk';
 import { WaiterConfiguration } from 'aws-sdk/lib/service';
 
 import { serialize } from './serialize';
@@ -142,6 +142,7 @@ export class DynamoDbAsync {
     }
   }
 
+
   async query(params: Pick<DynamoDB.QueryInput, any>) {
     return this.queryAsync({
       TableName: this.tableName,
@@ -165,7 +166,9 @@ export class DynamoDbAsync {
   }
 
   async createTable(throughput: DynamoDB.ProvisionedThroughput = defaultProvisionedThroughput): Promise<boolean> {
-    await this.createTableAsync({
+    const throughputVal = throughput?throughput:defaultProvisionedThroughput
+    console.log(`in createTable() - throughputVal = ${JSON.stringify(throughputVal)}`)
+    let param: DynamoDB.Types.CreateTableInput = {
       TableName: this.tableName,
       AttributeDefinitions: [
         { AttributeName: Keys.HASH_KEY, AttributeType: 'S' },
@@ -176,8 +179,26 @@ export class DynamoDbAsync {
         { AttributeName: Keys.RANGE_KEY, KeyType: 'RANGE' }
       ],
       BillingMode: this.billingMode,
-      ProvisionedThroughput: this.billingMode == BillingMode.PROVISIONED ? throughput : undefined
-    });
+    };
+
+    const provThroughput =  this.billingMode == BillingMode.PROVISIONED ? throughputVal : undefined;
+
+    if (provThroughput){
+      param = {...param, ProvisionedThroughput: provThroughput}
+    }
+    console.log(`in createTable() - param = ${JSON.stringify(param)}`)
+
+
+    try {
+      await this.createTableAsync(param);
+
+    } catch (e){
+      if ((e as AWSError).code !== 'ResourceInUseException'){
+        console.log(`in createTable() - got error creating table - ${(e as AWSError).code } - rethrowing`)
+        throw e
+      }
+      console.log(`in createTable() - got error creating table - ${(e as AWSError).code }`)
+    }
     await this.waitForAsync('tableExists', {
       TableName: this.tableName,
       $waiter: { delay: RESOURCE_WAITER_DELAY }

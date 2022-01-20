@@ -74,7 +74,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
     this.tableName = tableHash[0];
     this.hashKey = tableHash[1] || '!';
     this.s3AttachmentDefs = options?.s3?.attachments || [];
-    this.s3Async = new S3Async(options?.s3?.client as S3, this.tableName);
+    this.s3Async = new S3Async((options?.s3?.client|| new S3()) as S3, this.tableName);
     this.dynamoDbAsync = new DynamoDbAsync(dynamoDb, this.tableName, this.hashKey, useConsistency, billingMode);
   }
 
@@ -110,7 +110,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   async _open(options: AbstractOpenOptions, cb: ErrorCallback) {
     const dynamoOptions = options.dynamoOptions || {};
-
+    console.log (`in open() override call ${JSON.stringify(dynamoOptions)}`)
     try {
       let { dynamoTableExists, s3BucketExists } = await Promise.all([
         this.dynamoDbAsync.tableExists(),
@@ -136,6 +136,7 @@ export class DynamoDbDown extends AbstractLevelDOWN {
       }
       cb(undefined);
     } catch (e) {
+      console.log (`error: ${JSON.stringify(e)}; ${(e as Error).message}`)
       cb(e as Error);
     }
   }
@@ -203,6 +204,57 @@ export class DynamoDbDown extends AbstractLevelDOWN {
 
   _iterator(options: AbstractIteratorOptions<any>): AbstractIterator<any, any> {
     return new DynamoDbIterator(this, this.dynamoDbAsync, this.hashKey, options);
+  }
+
+  async _getMany(keys: any[], options?: AbstractGetOptions, cb?: ErrorValueCallback<any[]>): Promise<void>{
+
+    // const params: BatchGetItemCommandInput = {
+    //   RequestItems:{}
+    // }
+
+    // params.RequestItems![`${this.encodedTableName}`] = { Keys:[] };
+      
+    // let paramKeys = params.RequestItems![`${this.encodedTableName}`].Keys
+
+    // for (const key of keys){
+    //   paramKeys![key] = {
+    //     hkey: {S: this.hashKey},
+    //     rkey: {S: key.toString()}
+    //   }
+    // }
+
+      try{
+        const ret = await this.dynamoDbAsync?.getBatch(keys)
+        const vals = [];
+        for (const key of keys){
+          const val = ret[key]
+          vals.push(this.deserialize(val, options?.asBuffer))
+        }
+        
+        cb!(undefined,vals)
+        // cb!(undefined,ret);
+
+      } catch (e) {
+
+        cb!(e as Error,[])
+
+      }
+    
+    //   if (err) {
+    //     cb!(err,[])
+    //   } else if (!(data && data.Responses && data.Responses[`${this.encodedTableName}`])) {
+    //     cb!(new Error('NotFound'),[])
+    //   } else {
+    //     const vals = [];
+    //     for (const key of keys){
+    //       const val = data.Responses[`${this.encodedTableName}`][key]
+    //       vals.push(this.deserialize(val, options?.asBuffer))
+    //     }
+        
+    //     cb!(undefined,vals)
+    //   }
+    // })
+
   }
 
   async deleteTable() {
